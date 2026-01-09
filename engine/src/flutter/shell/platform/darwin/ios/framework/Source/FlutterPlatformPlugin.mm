@@ -5,6 +5,7 @@
 #import "flutter/shell/platform/darwin/ios/framework/Source/FlutterPlatformPlugin.h"
 
 #import <AudioToolbox/AudioToolbox.h>
+#import <AVFoundation/AVFoundation.h>
 #import <Foundation/Foundation.h>
 #import <UIKit/UIApplication.h>
 #import <UIKit/UIKit.h>
@@ -115,6 +116,11 @@ static void SetStatusBarStyleForSharedApplication(UIStatusBarStyle style) {
   id args = call.arguments;
   if ([method isEqualToString:@"SystemSound.play"]) {
     [self playSystemSound:args];
+    result(nil);
+  } else if ([method isEqualToString:@"SystemSound.playOnSpeakerOnly"]) {
+    if ([self isSpeakerOnlyOutput]) {
+      [self playSystemSound:args];
+    }
     result(nil);
   } else if ([method isEqualToString:@"HapticFeedback.vibrate"]) {
     [self vibrateHapticFeedback:args];
@@ -239,6 +245,18 @@ static void SetStatusBarStyleForSharedApplication(UIStatusBarStyle style) {
   NSString* searchURL = [NSString stringWithFormat:@"%@%@", kSearchURLPrefix, escapedText];
 
   [flutterApplication openURL:[NSURL URLWithString:searchURL] options:@{} completionHandler:nil];
+}
+
+- (BOOL)isSpeakerOnlyOutput {
+    NSArray<AVAudioSessionPortDescription *> *outputs =
+        [AVAudioSession sharedInstance].currentRoute.outputs;
+
+    // If any output is not built-in speaker, don't play.
+    if (outputs.count == 1) {
+        AVAudioSessionPortDescription *o = outputs.firstObject;
+        return [o.portType isEqualToString:AVAudioSessionPortBuiltInSpeaker];
+    }
+    return NO;
 }
 
 - (void)playSystemSound:(NSString*)soundType {

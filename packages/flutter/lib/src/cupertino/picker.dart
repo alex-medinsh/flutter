@@ -274,7 +274,7 @@ class _CupertinoPickerState extends State<CupertinoPicker> {
         if (index != _lastHapticIndex) {
           _lastHapticIndex = index;
           HapticFeedback.selectionClick();
-          SystemSound.play(SystemSoundType.tick);
+          SystemSound.playOnSpeakerOnly(SystemSoundType.tick);
         }
       case TargetPlatform.android:
       case TargetPlatform.fuchsia:
