@@ -4,8 +4,8 @@
 
 #import "flutter/shell/platform/darwin/ios/framework/Source/FlutterPlatformPlugin.h"
 
-#import <AudioToolbox/AudioToolbox.h>
 #import <AVFoundation/AVFoundation.h>
+#import <AudioToolbox/AudioToolbox.h>
 #import <Foundation/Foundation.h>
 #import <UIKit/UIApplication.h>
 #import <UIKit/UIKit.h>
@@ -248,15 +248,15 @@ static void SetStatusBarStyleForSharedApplication(UIStatusBarStyle style) {
 }
 
 - (BOOL)isSpeakerOnlyOutput {
-    NSArray<AVAudioSessionPortDescription *> *outputs =
-        [AVAudioSession sharedInstance].currentRoute.outputs;
+  NSArray<AVAudioSessionPortDescription*>* outputs =
+      [AVAudioSession sharedInstance].currentRoute.outputs;
 
-    // If any output is not built-in speaker, don't play.
-    if (outputs.count == 1) {
-        AVAudioSessionPortDescription *o = outputs.firstObject;
-        return [o.portType isEqualToString:AVAudioSessionPortBuiltInSpeaker];
-    }
-    return NO;
+  // If any output is not built-in speaker, don't play.
+  if (outputs.count == 1) {
+    AVAudioSessionPortDescription* o = outputs.firstObject;
+    return [o.portType isEqualToString:AVAudioSessionPortBuiltInSpeaker];
+  }
+  return NO;
 }
 
 - (void)playSystemSound:(NSString*)soundType {
