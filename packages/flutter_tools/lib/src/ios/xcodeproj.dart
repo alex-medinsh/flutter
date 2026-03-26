@@ -704,17 +704,21 @@ class XcodeProjectInfo {
       return exactMatch;
     }
     final String baseConfiguration = _baseConfigurationFor(buildInfo);
-    // Check for a unique match for build mode and flavor, e.g. "debug myflavor".
-    final String? buildConfigurationForBuildModeAndFlavor = _uniqueMatch(buildConfigurations, (
-      String candidate,
-    ) {
+    // Check for matches for build mode and flavor, e.g. "debug myflavor".
+    final List<String> matchesForBuildModeAndFlavor = buildConfigurations.where((String candidate) {
       candidate = candidate.toLowerCase();
       return candidate.contains(baseConfiguration.toLowerCase()) &&
           candidate.contains(scheme.toLowerCase());
-    });
-    // Fall back to the base configuration if no match or more than one match is found.
-    return buildConfigurationForBuildModeAndFlavor ??
-        _existingBuildConfigurationWithName(baseConfiguration);
+    }).toList();
+    // If there is exactly one match for build mode and flavor, return it.
+    // If there are multiple, the user most likely has a misconfigured project.
+    if (matchesForBuildModeAndFlavor.length == 1) {
+      return matchesForBuildModeAndFlavor.first;
+    } else if (matchesForBuildModeAndFlavor.length > 1) {
+      return null;
+    }
+    // Fall back to the base configuration if no match is found.
+    return _existingBuildConfigurationWithName(baseConfiguration);
   }
 
   static String _baseConfigurationFor(BuildInfo buildInfo) {

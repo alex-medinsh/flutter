@@ -1216,6 +1216,31 @@ Information about project "Runner":
     },
   );
 
+  testWithoutContext(
+    "build configuration doesn't fall back when multiple matches for mode and flavor are available",
+    () {
+      final info = XcodeProjectInfo(
+        <String>['Runner'],
+        <String>['Debug', 'Profile', 'Release', 'DebugBanana', 'banana debug'],
+        <String>['Banana'],
+        logger,
+      );
+
+      expect(
+        info.buildConfigurationFor(
+          const BuildInfo(
+            BuildMode.debug,
+            'banana',
+            treeShakeIcons: false,
+            packageConfigPath: '.dart_tool/package_config.json',
+          ),
+          'Banana',
+        ),
+        null,
+      );
+    },
+  );
+
   testWithoutContext('build configuration for project with inconsistent naming is null', () {
     final info = XcodeProjectInfo(
       <String>['Runner'],
