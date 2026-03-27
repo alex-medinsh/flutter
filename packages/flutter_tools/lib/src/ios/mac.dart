@@ -213,7 +213,6 @@ Future<XcodeBuildResult> buildXcodeProject({
   }
   final String? configuration = projectInfo.buildConfigurationFor(buildInfo, scheme);
   if (configuration == null) {
-    // TODO(alex-medinsh): Update message?
     globals.printError('');
     globals.printError(
       'The Xcode project defines build configurations: ${projectInfo.buildConfigurations.join(', ')}',
