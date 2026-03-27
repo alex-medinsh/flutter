@@ -699,12 +699,11 @@ class XcodeProjectInfo {
     final String expectedConfiguration = expectedBuildConfigurationFor(buildInfo, scheme);
     // Check for an exact match, e.g. "Debug-MyFlavor" if using a flavor or "Debug" if not.
     final String? exactMatch = _existingBuildConfigurationWithName(expectedConfiguration);
-    // When flavor is null, an exact match is required.
     if (exactMatch != null || buildInfo.flavor == null) {
       return exactMatch;
     }
     final String baseConfiguration = _baseConfigurationFor(buildInfo);
-    // Check for matches for build mode and flavor, e.g. "debug myflavor".
+    // Check for fuzzy matches for build mode and flavor, e.g. "debug myflavor".
     final List<String> matchesForBuildModeAndFlavor = buildConfigurations.where((String candidate) {
       candidate = candidate.toLowerCase();
       return candidate.contains(baseConfiguration.toLowerCase()) &&
