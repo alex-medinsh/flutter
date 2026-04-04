@@ -117,6 +117,16 @@ final RegExp _securityFindIdentityCertificateCnExtractionPattern = RegExp(r'.*\(
 /// extracts `ABCDE1F2DH`
 final RegExp _certificateOrganizationalUnitExtractionPattern = RegExp(r'OU=([a-zA-Z0-9]+)');
 
+/// Pattern to extract O (Organization) from certificate subject.
+///
+/// Uses a negative lookbehind to avoid matching OU (Organizational Unit).
+///
+/// Example:
+///
+/// `subject= /UID=A123BC4D5E/CN=Apple Development: Company Development (12ABCD234E)/OU=ABCDE1F2DH/O=Company LLC/C=US`
+/// extracts `Company LLC`
+final RegExp _certificateOrganizationExtractionPattern = RegExp(r'(?<![A-Z])O=([^,/\n]+)');
+
 /// Pattern to extract CN (Common Name) from certificate subject.
 ///
 /// Example:
@@ -242,6 +252,11 @@ class XcodeCodeSigningSettings {
   final FileSystemUtils _fileSystemUtils;
   final Terminal _terminal;
   final PlistParser _plistParser;
+
+  /// Cache for certificate team info, to avoid repeated `security`/`openssl` lookups
+  /// for the same identity during a single session.
+  final Map<String, _CertificateTeamInfo?> _certificateTeamInfoCache =
+      <String, _CertificateTeamInfo?>{};
 
   /// Config key for saved code-signing identity. A code-signing identity is a
   /// combination of a certificate and the private key that matches the public
@@ -543,9 +558,18 @@ class XcodeCodeSigningSettings {
     return null;
   }
 
-  /// Find the certificate for the [identity] and extract the development team /
-  /// organizational unit from the certificate.
-  Future<String?> _getDevelopmentTeamFromIdentity(String identity) async {
+  /// Looks up and caches [_CertificateTeamInfo] (team ID and team name) for
+  /// the given [identity] by running `security find-certificate` and
+  /// `openssl x509 -subject`.
+  ///
+  /// Returns null if the certificate cannot be found or parsed. Results are
+  /// cached so subsequent calls for the same identity do not re-run the
+  /// external processes.
+  Future<_CertificateTeamInfo?> _getCertificateTeamInfo(String identity) async {
+    if (_certificateTeamInfoCache.containsKey(identity)) {
+      return _certificateTeamInfoCache[identity];
+    }
+
     final String? signingCertificateId = _securityFindIdentityCertificateCnExtractionPattern
         .firstMatch(identity)
         ?.group(1);
@@ -553,6 +577,7 @@ class XcodeCodeSigningSettings {
     // If `security`'s output format changes, we'd have to update the above regex.
     if (signingCertificateId == null) {
       _logger.printError('Unable to parse common name from code-signing certificate $identity');
+      _certificateTeamInfoCache[identity] = null;
       return null;
     }
     String signingCertificateStdout;
@@ -567,6 +592,7 @@ class XcodeCodeSigningSettings {
           ], throwOnError: true)).stdout.trim();
     } on ProcessException catch (error) {
       _logger.printError('Unexpected error from security: $error');
+      _certificateTeamInfoCache[identity] = null;
       return null;
     }
 
@@ -592,19 +618,38 @@ class XcodeCodeSigningSettings {
 
     if (await opensslProcess.exitCode != 0) {
       _logger.printError('Failed to get subject name for code-signing certificate $identity');
+      _certificateTeamInfoCache[identity] = null;
       return null;
     }
 
-    final String? developmentTeam = _certificateOrganizationalUnitExtractionPattern
+    final String? teamId = _certificateOrganizationalUnitExtractionPattern
         .firstMatch(opensslOutput)
         ?.group(1);
-    if (developmentTeam == null) {
+    if (teamId == null) {
       _logger.printError(
         'Unable to parse development team from code-signing certificate $identity',
       );
+      _certificateTeamInfoCache[identity] = null;
       return null;
     }
-    return developmentTeam;
+
+    final String? teamName = _certificateOrganizationExtractionPattern
+        .firstMatch(opensslOutput)
+        ?.group(1);
+
+    final _CertificateTeamInfo info = _CertificateTeamInfo(
+      teamId: teamId,
+      teamName: teamName?.trim() ?? '',
+    );
+    _certificateTeamInfoCache[identity] = info;
+    return info;
+  }
+
+  /// Find the certificate for the [identity] and extract the development team /
+  /// organizational unit from the certificate.
+  Future<String?> _getDevelopmentTeamFromIdentity(String identity) async {
+    final _CertificateTeamInfo? info = await _getCertificateTeamInfo(identity);
+    return info?.teamId;
   }
 
   /// Select code-signinging settings and save to config.
@@ -739,8 +784,24 @@ class XcodeCodeSigningSettings {
       emphasis: true,
     );
     final int count = validCodeSigningIdentities.length;
+
+    // Pre-fetch team info for all identities so we can display it alongside
+    // the identity name. Results are cached to avoid duplicate lookups later.
+    final Map<String, _CertificateTeamInfo?> teamInfoMap = <String, _CertificateTeamInfo?>{};
+    for (final String identity in validCodeSigningIdentities) {
+      teamInfoMap[identity] = await _getCertificateTeamInfo(identity);
+    }
+
     for (int i = 0; i < count; i++) {
-      _logger.printStatus('[${i + 1}] ${validCodeSigningIdentities[i]}');
+      final String identity = validCodeSigningIdentities[i];
+      final _CertificateTeamInfo? info = teamInfoMap[identity];
+      if (info != null && info.teamName.isNotEmpty) {
+        _logger.printStatus('[${i + 1}] $identity | Team: ${info.teamName} (${info.teamId})');
+      } else if (info != null) {
+        _logger.printStatus('[${i + 1}] $identity | Team: (${info.teamId})');
+      } else {
+        _logger.printStatus('[${i + 1}] $identity');
+      }
     }
     final String choice = await _terminal.promptForCharInput(
       List<String>.generate(count, (int number) => '${number + 1}')..add('q'),
@@ -944,6 +1005,17 @@ class _ProvisioningProfile {
   final DateTime expirationDate;
   final List<File> developerCertificates;
   final bool? isXcodeManaged;
+}
+
+/// Holds team information parsed from a code-signing certificate subject.
+class _CertificateTeamInfo {
+  const _CertificateTeamInfo({required this.teamId, required this.teamName});
+
+  /// The Apple Developer Team ID, parsed from the certificate subject's OU field.
+  final String teamId;
+
+  /// The Apple Developer Team/Organization name, parsed from the certificate subject's O field.
+  final String teamName;
 }
 
 /// Returns true if s is a not empty string.

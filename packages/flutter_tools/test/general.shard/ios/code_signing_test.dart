@@ -862,6 +862,25 @@ void main() {
             command: <String>['security', 'find-identity', '-p', 'codesigning', '-v'],
             stdout: kCertificates,
           ),
+          // Display phase: look up team info for all 3 identities.
+          const FakeCommand(
+            command: <String>['security', 'find-certificate', '-c', '1111AAAA11', '-p'],
+            stdout: 'This is a fake certificate for Profile 1',
+          ),
+          const FakeCommand(
+            command: <String>['openssl', 'x509', '-subject'],
+            stdout:
+                'subject= /CN=iPhone Developer: Profile 1 (1111AAAA11)/OU=1111AAAA11/O=Team 1/C=US',
+          ),
+          const FakeCommand(
+            command: <String>['security', 'find-certificate', '-c', '2222BBBB22', '-p'],
+            stdout: 'This is a fake certificate for Profile 2',
+          ),
+          const FakeCommand(
+            command: <String>['openssl', 'x509', '-subject'],
+            stdout:
+                'subject= /CN=iPhone Developer: Profile 2 (2222BBBB22)/OU=2222BBBB22/O=Team 2/C=US',
+          ),
           const FakeCommand(
             command: <String>['security', 'find-certificate', '-c', '3333CCCC33', '-p'],
             stdout: 'This is a fake certificate',
@@ -873,6 +892,7 @@ void main() {
                 'subject= /CN=iPhone Developer: Profile 3 (3333CCCC33)/OU=4444DDDD44/O=My Team/C=US',
             completer: completer,
           ),
+          // _getDevelopmentTeamFromIdentity uses cached result — no additional commands.
         ]);
 
         // Verify that certificate value is passed into openssl command.
@@ -903,6 +923,10 @@ void main() {
           contains(
             'Developer identity "iPhone Developer: Profile 3 (3333CCCC33)" selected for iOS code signing',
           ),
+        );
+        expect(
+          logger.statusText,
+          contains('[3] iPhone Developer: Profile 3 (3333CCCC33) | Team: My Team (4444DDDD44)'),
         );
         expect(logger.errorText, isEmpty);
         expect(stdin, 'This is a fake certificate');
@@ -1044,6 +1068,25 @@ void main() {
             command: <String>['security', 'find-identity', '-p', 'codesigning', '-v'],
             stdout: kCertificates,
           ),
+          // Display phase: look up team info for all 3 identities.
+          const FakeCommand(
+            command: <String>['security', 'find-certificate', '-c', '1111AAAA11', '-p'],
+            stdout: 'This is a fake certificate for Profile 1',
+          ),
+          const FakeCommand(
+            command: <String>['openssl', 'x509', '-subject'],
+            stdout:
+                'subject= /CN=iPhone Developer: Profile 1 (1111AAAA11)/OU=1111AAAA11/O=Team 1/C=US',
+          ),
+          const FakeCommand(
+            command: <String>['security', 'find-certificate', '-c', '2222BBBB22', '-p'],
+            stdout: 'This is a fake certificate for Profile 2',
+          ),
+          const FakeCommand(
+            command: <String>['openssl', 'x509', '-subject'],
+            stdout:
+                'subject= /CN=iPhone Developer: Profile 2 (2222BBBB22)/OU=2222BBBB22/O=Team 2/C=US',
+          ),
           const FakeCommand(
             command: <String>['security', 'find-certificate', '-c', '3333CCCC33', '-p'],
             stdout: 'This is a fake certificate',
@@ -1055,6 +1098,7 @@ void main() {
                 'subject= /CN=iPhone Developer: Profile 3 (3333CCCC33)/OU=4444DDDD44/O=My Team/C=US',
             completer: completer,
           ),
+          // _getDevelopmentTeamFromIdentity uses cached result — no additional commands.
         ]);
 
         final FakeTerminal testTerminal = FakeTerminal();
@@ -1133,10 +1177,30 @@ void main() {
             command: <String>['security', 'find-identity', '-p', 'codesigning', '-v'],
             stdout: kCertificates,
           ),
+          // Display phase: Profile 1 and 2 succeed, Profile 3 fails.
+          const FakeCommand(
+            command: <String>['security', 'find-certificate', '-c', '1111AAAA11', '-p'],
+            stdout: 'This is a fake certificate for Profile 1',
+          ),
+          const FakeCommand(
+            command: <String>['openssl', 'x509', '-subject'],
+            stdout:
+                'subject= /CN=iPhone Developer: Profile 1 (1111AAAA11)/OU=1111AAAA11/O=Team 1/C=US',
+          ),
+          const FakeCommand(
+            command: <String>['security', 'find-certificate', '-c', '2222BBBB22', '-p'],
+            stdout: 'This is a fake certificate for Profile 2',
+          ),
+          const FakeCommand(
+            command: <String>['openssl', 'x509', '-subject'],
+            stdout:
+                'subject= /CN=iPhone Developer: Profile 2 (2222BBBB22)/OU=2222BBBB22/O=Team 2/C=US',
+          ),
           const FakeCommand(
             command: <String>['security', 'find-certificate', '-c', '3333CCCC33', '-p'],
             exitCode: 1,
           ),
+          // _getDevelopmentTeamFromIdentity uses cached result (null) — no additional commands.
         ]);
 
         final FakeTerminal testTerminal = FakeTerminal();
@@ -1508,6 +1572,34 @@ void main() {
             command: <String>['security', 'find-identity', '-p', 'codesigning', '-v'],
             stdout: kCertificates,
           ),
+          // Display phase: look up team info for all 3 identities.
+          const FakeCommand(
+            command: <String>['security', 'find-certificate', '-c', '1111AAAA11', '-p'],
+            stdout: 'This is a fake certificate for Profile 1',
+          ),
+          const FakeCommand(
+            command: <String>['openssl', 'x509', '-subject'],
+            stdout:
+                'subject= /CN=iPhone Developer: Profile 1 (1111AAAA11)/OU=1111AAAA11/O=Team 1/C=US',
+          ),
+          const FakeCommand(
+            command: <String>['security', 'find-certificate', '-c', '2222BBBB22', '-p'],
+            stdout: 'This is a fake certificate for Profile 2',
+          ),
+          const FakeCommand(
+            command: <String>['openssl', 'x509', '-subject'],
+            stdout:
+                'subject= /CN=iPhone Developer: Profile 2 (2222BBBB22)/OU=2222BBBB22/O=Team 2/C=US',
+          ),
+          const FakeCommand(
+            command: <String>['security', 'find-certificate', '-c', '3333CCCC33', '-p'],
+            stdout: 'This is a fake certificate for Profile 3',
+          ),
+          const FakeCommand(
+            command: <String>['openssl', 'x509', '-subject'],
+            stdout:
+                'subject= /CN=iPhone Developer: Profile 3 (3333CCCC33)/OU=4444DDDD44/O=My Team/C=US',
+          ),
         ]);
 
         final XcodeCodeSigningSettings settings = XcodeCodeSigningSettings(
@@ -1549,6 +1641,34 @@ void main() {
             command: <String>['security', 'find-identity', '-p', 'codesigning', '-v'],
             stdout: kCertificates,
           ),
+          // Display phase: look up team info for all 3 identities.
+          const FakeCommand(
+            command: <String>['security', 'find-certificate', '-c', '1111AAAA11', '-p'],
+            stdout: 'This is a fake certificate for Profile 1',
+          ),
+          const FakeCommand(
+            command: <String>['openssl', 'x509', '-subject'],
+            stdout:
+                'subject= /CN=iPhone Developer: Profile 1 (1111AAAA11)/OU=1111AAAA11/O=Team 1/C=US',
+          ),
+          const FakeCommand(
+            command: <String>['security', 'find-certificate', '-c', '2222BBBB22', '-p'],
+            stdout: 'This is a fake certificate for Profile 2',
+          ),
+          const FakeCommand(
+            command: <String>['openssl', 'x509', '-subject'],
+            stdout:
+                'subject= /CN=iPhone Developer: Profile 2 (2222BBBB22)/OU=2222BBBB22/O=Team 2/C=US',
+          ),
+          const FakeCommand(
+            command: <String>['security', 'find-certificate', '-c', '3333CCCC33', '-p'],
+            stdout: 'This is a fake certificate for Profile 3',
+          ),
+          const FakeCommand(
+            command: <String>['openssl', 'x509', '-subject'],
+            stdout:
+                'subject= /CN=iPhone Developer: Profile 3 (3333CCCC33)/OU=4444DDDD44/O=My Team/C=US',
+          ),
         ]);
 
         final XcodeCodeSigningSettings settings = XcodeCodeSigningSettings(
@@ -1566,6 +1686,83 @@ void main() {
         expect(logger.warningText, isEmpty);
         expect(config.getValue('ios-signing-cert'), 'iPhone Developer: Profile 3 (3333CCCC33)');
         expect(config.getValue('ios-signing-profile'), isNull);
+        expect(processManager, hasNoRemainingExpectations);
+      });
+
+      testWithoutContext('displays team name and team ID alongside each identity', () async {
+        final BufferLogger logger = BufferLogger.test();
+        final Config config = Config.test();
+        final FakeTerminal terminal = FakeTerminal();
+        terminal.setPrompt(<String>['1', '2', 'q'], '1');
+        unawaited(
+          terminal.promptCompleter.future.whenComplete(() {
+            terminal.setPrompt(<String>['1', '2', '3', 'q'], '1');
+          }),
+        );
+
+        final FakeProcessManager processManager = FakeProcessManager.list(<FakeCommand>[
+          const FakeCommand(command: <String>['which', 'security']),
+          const FakeCommand(command: <String>['which', 'openssl']),
+          const FakeCommand(
+            command: <String>['security', 'find-identity', '-p', 'codesigning', '-v'],
+            stdout: kCertificates,
+          ),
+          // Display phase: look up team info for all 3 identities.
+          const FakeCommand(
+            command: <String>['security', 'find-certificate', '-c', '1111AAAA11', '-p'],
+            stdout: 'This is a fake certificate for Profile 1',
+          ),
+          const FakeCommand(
+            command: <String>['openssl', 'x509', '-subject'],
+            stdout:
+                'subject=UID=X, CN=iPhone Developer: Profile 1 (1111AAAA11), OU=TEAM1ID, O=ALUNAFI LTD., C=US',
+          ),
+          const FakeCommand(
+            command: <String>['security', 'find-certificate', '-c', '2222BBBB22', '-p'],
+            stdout: 'This is a fake certificate for Profile 2',
+          ),
+          const FakeCommand(
+            command: <String>['openssl', 'x509', '-subject'],
+            stdout:
+                'subject= /CN=iPhone Developer: Profile 2 (2222BBBB22)/OU=TEAM2ID/O=Nodabank Corp/C=US',
+          ),
+          const FakeCommand(
+            command: <String>['security', 'find-certificate', '-c', '3333CCCC33', '-p'],
+            stdout: 'This is a fake certificate for Profile 3',
+          ),
+          const FakeCommand(
+            command: <String>['openssl', 'x509', '-subject'],
+            // No O= field — team name should be omitted from display.
+            stdout: 'subject= /CN=iPhone Developer: Profile 3 (3333CCCC33)/OU=TEAM3ID/C=US',
+          ),
+        ]);
+
+        final XcodeCodeSigningSettings settings = XcodeCodeSigningSettings(
+          config: config,
+          logger: logger,
+          platform: FakePlatform(operatingSystem: 'macos'),
+          fileSystem: MemoryFileSystem.test(),
+          fileSystemUtils: FakeFileSystemUtils(),
+          processUtils: ProcessUtils(processManager: processManager, logger: logger),
+          terminal: terminal,
+          plistParser: FakePlistParser(),
+        );
+        await settings.selectSettings();
+
+        // Profile 1 and 2 show team name + ID; Profile 3 (no O= field) shows only team ID.
+        expect(
+          logger.statusText,
+          contains('[1] iPhone Developer: Profile 1 (1111AAAA11) | Team: ALUNAFI LTD. (TEAM1ID)'),
+        );
+        expect(
+          logger.statusText,
+          contains('[2] iPhone Developer: Profile 2 (2222BBBB22) | Team: Nodabank Corp (TEAM2ID)'),
+        );
+        expect(
+          logger.statusText,
+          contains('[3] iPhone Developer: Profile 3 (3333CCCC33) | Team: (TEAM3ID)'),
+        );
+        expect(config.getValue('ios-signing-cert'), 'iPhone Developer: Profile 1 (1111AAAA11)');
         expect(processManager, hasNoRemainingExpectations);
       });
     });
