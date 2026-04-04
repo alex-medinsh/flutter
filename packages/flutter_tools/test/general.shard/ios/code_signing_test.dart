@@ -885,6 +885,16 @@ void main() {
             command: <String>['security', 'find-certificate', '-c', '3333CCCC33', '-p'],
             stdout: 'This is a fake certificate',
           ),
+          const FakeCommand(
+            command: <String>['openssl', 'x509', '-subject'],
+            stdout:
+                'subject= /CN=iPhone Developer: Profile 3 (3333CCCC33)/OU=4444DDDD44/O=My Team/C=US',
+          ),
+          // _getDevelopmentTeamFromIdentity re-runs commands for the selected identity (no caching).
+          const FakeCommand(
+            command: <String>['security', 'find-certificate', '-c', '3333CCCC33', '-p'],
+            stdout: 'This is a fake certificate',
+          ),
           FakeCommand(
             command: const <String>['openssl', 'x509', '-subject'],
             stdin: IOSink(controller.sink),
@@ -892,7 +902,6 @@ void main() {
                 'subject= /CN=iPhone Developer: Profile 3 (3333CCCC33)/OU=4444DDDD44/O=My Team/C=US',
             completer: completer,
           ),
-          // _getDevelopmentTeamFromIdentity uses cached result — no additional commands.
         ]);
 
         // Verify that certificate value is passed into openssl command.
@@ -1091,6 +1100,16 @@ void main() {
             command: <String>['security', 'find-certificate', '-c', '3333CCCC33', '-p'],
             stdout: 'This is a fake certificate',
           ),
+          const FakeCommand(
+            command: <String>['openssl', 'x509', '-subject'],
+            stdout:
+                'subject= /CN=iPhone Developer: Profile 3 (3333CCCC33)/OU=4444DDDD44/O=My Team/C=US',
+          ),
+          // _getDevelopmentTeamFromIdentity re-runs commands for the selected identity (no caching).
+          const FakeCommand(
+            command: <String>['security', 'find-certificate', '-c', '3333CCCC33', '-p'],
+            stdout: 'This is a fake certificate',
+          ),
           FakeCommand(
             command: const <String>['openssl', 'x509', '-subject'],
             stdin: IOSink(controller.sink),
@@ -1098,7 +1117,6 @@ void main() {
                 'subject= /CN=iPhone Developer: Profile 3 (3333CCCC33)/OU=4444DDDD44/O=My Team/C=US',
             completer: completer,
           ),
-          // _getDevelopmentTeamFromIdentity uses cached result — no additional commands.
         ]);
 
         final FakeTerminal testTerminal = FakeTerminal();
@@ -1200,7 +1218,11 @@ void main() {
             command: <String>['security', 'find-certificate', '-c', '3333CCCC33', '-p'],
             exitCode: 1,
           ),
-          // _getDevelopmentTeamFromIdentity uses cached result (null) — no additional commands.
+          // _getDevelopmentTeamFromIdentity re-runs commands for the selected identity (no caching).
+          const FakeCommand(
+            command: <String>['security', 'find-certificate', '-c', '3333CCCC33', '-p'],
+            exitCode: 1,
+          ),
         ]);
 
         final FakeTerminal testTerminal = FakeTerminal();

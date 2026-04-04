@@ -260,11 +260,6 @@ class XcodeCodeSigningSettings {
   final Terminal _terminal;
   final PlistParser _plistParser;
 
-  /// Cache for certificate team info, to avoid repeated `security`/`openssl` lookups
-  /// for the same identity during a single session.
-  final Map<String, _CertificateTeamInfo?> _certificateTeamInfoCache =
-      <String, _CertificateTeamInfo?>{};
-
   /// Config key for saved code-signing identity. A code-signing identity is a
   /// combination of a certificate and the private key that matches the public
   /// key in that certificate.
@@ -565,18 +560,11 @@ class XcodeCodeSigningSettings {
     return null;
   }
 
-  /// Looks up and caches [_CertificateTeamInfo] (team ID and team name) for
-  /// the given [identity] by running `security find-certificate` and
-  /// `openssl x509 -subject`.
+  /// Looks up [_CertificateTeamInfo] (team ID and team name) for the given
+  /// [identity] by running `security find-certificate` and `openssl x509 -subject`.
   ///
-  /// Returns null if the certificate cannot be found or parsed. Results are
-  /// cached so subsequent calls for the same identity do not re-run the
-  /// external processes.
+  /// Returns null if the certificate cannot be found or parsed.
   Future<_CertificateTeamInfo?> _getCertificateTeamInfo(String identity) async {
-    if (_certificateTeamInfoCache.containsKey(identity)) {
-      return _certificateTeamInfoCache[identity];
-    }
-
     final String? signingCertificateId = _securityFindIdentityCertificateCnExtractionPattern
         .firstMatch(identity)
         ?.group(1);
@@ -584,7 +572,6 @@ class XcodeCodeSigningSettings {
     // If `security`'s output format changes, we'd have to update the above regex.
     if (signingCertificateId == null) {
       _logger.printError('Unable to parse common name from code-signing certificate $identity');
-      _certificateTeamInfoCache[identity] = null;
       return null;
     }
     String signingCertificateStdout;
@@ -599,7 +586,6 @@ class XcodeCodeSigningSettings {
           ], throwOnError: true)).stdout.trim();
     } on ProcessException catch (error) {
       _logger.printError('Unexpected error from security: $error');
-      _certificateTeamInfoCache[identity] = null;
       return null;
     }
 
@@ -625,7 +611,6 @@ class XcodeCodeSigningSettings {
 
     if (await opensslProcess.exitCode != 0) {
       _logger.printError('Failed to get subject name for code-signing certificate $identity');
-      _certificateTeamInfoCache[identity] = null;
       return null;
     }
 
@@ -636,7 +621,6 @@ class XcodeCodeSigningSettings {
       _logger.printError(
         'Unable to parse development team from code-signing certificate $identity',
       );
-      _certificateTeamInfoCache[identity] = null;
       return null;
     }
 
@@ -644,12 +628,10 @@ class XcodeCodeSigningSettings {
         .firstMatch(opensslOutput)
         ?.group(1);
 
-    final _CertificateTeamInfo info = _CertificateTeamInfo(
+    return _CertificateTeamInfo(
       teamId: teamId,
       teamName: teamName?.trim() ?? '',
     );
-    _certificateTeamInfoCache[identity] = info;
-    return info;
   }
 
   /// Find the certificate for the [identity] and extract the development team /
