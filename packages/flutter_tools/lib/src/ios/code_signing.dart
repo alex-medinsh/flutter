@@ -119,13 +119,20 @@ final RegExp _certificateOrganizationalUnitExtractionPattern = RegExp(r'OU=([a-z
 
 /// Pattern to extract O (Organization) from certificate subject.
 ///
-/// Uses a negative lookbehind to avoid matching OU (Organizational Unit).
+/// Requires a separator character (comma, slash, or space) or start-of-string
+/// immediately before `O=` to avoid false positives on fields like `CO=` or
+/// multi-character field names.
 ///
-/// Example:
+/// Example (slash-separated):
 ///
 /// `subject= /UID=A123BC4D5E/CN=Apple Development: Company Development (12ABCD234E)/OU=ABCDE1F2DH/O=Company LLC/C=US`
 /// extracts `Company LLC`
-final RegExp _certificateOrganizationExtractionPattern = RegExp(r'(?<![A-Z])O=([^,/\n]+)');
+///
+/// Example (comma-separated):
+///
+/// `subject=UID=A123BC4D5E, CN=Apple Development: Company Development (12ABCD234E), OU=ABCDE1F2DH, O=Company LLC, C=US`
+/// extracts `Company LLC`
+final RegExp _certificateOrganizationExtractionPattern = RegExp(r'(?:^|[,/ ])O=([^,/\n]+)');
 
 /// Pattern to extract CN (Common Name) from certificate subject.
 ///
