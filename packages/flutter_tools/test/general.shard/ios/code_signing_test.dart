@@ -1737,7 +1737,7 @@ void main() {
           const FakeCommand(
             command: <String>['openssl', 'x509', '-subject'],
             stdout:
-                'subject=UID=X, CN=iPhone Developer: Profile 1 (1111AAAA11), OU=TEAM1ID, O=ALUNAFI LTD., C=US',
+                'subject=UID=X, CN=iPhone Developer: Profile 1 (1111AAAA11), OU=TEAM1ID, O=Acme Corp Ltd., C=US',
           ),
           const FakeCommand(
             command: <String>['security', 'find-certificate', '-c', '2222BBBB22', '-p'],
@@ -1746,7 +1746,7 @@ void main() {
           const FakeCommand(
             command: <String>['openssl', 'x509', '-subject'],
             stdout:
-                'subject= /CN=iPhone Developer: Profile 2 (2222BBBB22)/OU=TEAM2ID/O=Nodabank Corp/C=US',
+                'subject= /CN=iPhone Developer: Profile 2 (2222BBBB22)/OU=TEAM2ID/O=Example Inc/C=US',
           ),
           const FakeCommand(
             command: <String>['security', 'find-certificate', '-c', '3333CCCC33', '-p'],
@@ -1774,11 +1774,11 @@ void main() {
         // Profile 1 and 2 show team name + ID; Profile 3 (no O= field) shows only team ID.
         expect(
           logger.statusText,
-          contains('[1] iPhone Developer: Profile 1 (1111AAAA11) | Team: ALUNAFI LTD. (TEAM1ID)'),
+          contains('[1] iPhone Developer: Profile 1 (1111AAAA11) | Team: Acme Corp Ltd. (TEAM1ID)'),
         );
         expect(
           logger.statusText,
-          contains('[2] iPhone Developer: Profile 2 (2222BBBB22) | Team: Nodabank Corp (TEAM2ID)'),
+          contains('[2] iPhone Developer: Profile 2 (2222BBBB22) | Team: Example Inc (TEAM2ID)'),
         );
         expect(
           logger.statusText,
