@@ -3,10 +3,14 @@
 // found in the LICENSE file.
 
 import 'package:flutter/gestures.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/physics.dart';
 import 'package:flutter/scheduler.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:leak_tracker_flutter_testing/leak_tracker_flutter_testing.dart';
+
+import 'button_tester.dart';
+import 'widgets_app_tester.dart';
 
 List<Widget> children(int n) {
   return List<Widget>.generate(n, (int i) {
@@ -18,10 +22,12 @@ void main() {
   testWidgets('Scrolling with list view changes, leaving the overscroll', (
     WidgetTester tester,
   ) async {
-    final ScrollController controller = ScrollController();
+    final controller = ScrollController();
     addTearDown(controller.dispose);
     await tester.pumpWidget(
-      MaterialApp(home: ListView(controller: controller, children: children(30))),
+      TestWidgetsApp(
+        home: ListView(controller: controller, children: children(30)),
+      ),
     );
     final double thirty = controller.position.maxScrollExtent;
     controller.jumpTo(thirty);
@@ -29,7 +35,9 @@ void main() {
     controller.jumpTo(thirty + 100.0); // past the end
     await tester.pump();
     await tester.pumpWidget(
-      MaterialApp(home: ListView(controller: controller, children: children(31))),
+      TestWidgetsApp(
+        home: ListView(controller: controller, children: children(31)),
+      ),
     );
     expect(
       controller.position.pixels,
@@ -42,10 +50,12 @@ void main() {
   testWidgets('Scrolling with list view changes, remaining overscrolled', (
     WidgetTester tester,
   ) async {
-    final ScrollController controller = ScrollController();
+    final controller = ScrollController();
     addTearDown(controller.dispose);
     await tester.pumpWidget(
-      MaterialApp(home: ListView(controller: controller, children: children(30))),
+      TestWidgetsApp(
+        home: ListView(controller: controller, children: children(30)),
+      ),
     );
     final double thirty = controller.position.maxScrollExtent;
     controller.jumpTo(thirty);
@@ -53,17 +63,73 @@ void main() {
     controller.jumpTo(thirty + 200.0); // past the end
     await tester.pump();
     await tester.pumpWidget(
-      MaterialApp(home: ListView(controller: controller, children: children(31))),
+      TestWidgetsApp(
+        home: ListView(controller: controller, children: children(31)),
+      ),
     );
     expect(controller.position.pixels, thirty + 200.0); // has the same position, still overscrolled
     expect(await tester.pumpAndSettle(), 8); // now it goes ballistic...
     expect(controller.position.pixels, thirty + 100.0); // and ends up at the end
   });
 
+  testWidgets('DrivenScrollActivity allows overriding applyMoveTo', (WidgetTester tester) async {
+    final controller = ScrollController();
+    addTearDown(controller.dispose);
+    final notifications = <ScrollNotification>[];
+    await tester.pumpWidget(
+      Directionality(
+        textDirection: TextDirection.ltr,
+        child: NotificationListener<ScrollNotification>(
+          onNotification: (ScrollNotification notif) {
+            if (notif is OverscrollNotification) {
+              notifications.add(notif);
+            }
+            return false;
+          },
+          child: ListView(controller: controller, children: children(10)),
+        ),
+      ),
+    );
+    final position = controller.position as ScrollPositionWithSingleContext;
+    final double end = position.maxScrollExtent;
+
+    position.beginActivity(
+      DrivenScrollActivity(
+        position,
+        from: 0,
+        to: end + 10,
+        duration: const Duration(milliseconds: 100),
+        curve: Curves.linear,
+        vsync: position.context.vsync,
+      ),
+    );
+    await tester.pumpAndSettle();
+    // The base DrivenScrollActivity caused overscroll.
+    expect(notifications, hasLength(1));
+
+    notifications.clear();
+    controller.jumpTo(0);
+    await tester.pump();
+
+    position.beginActivity(
+      _NoOverscrollDrivenScrollActivity(
+        position,
+        from: 0,
+        to: end + 10,
+        duration: const Duration(milliseconds: 100),
+        curve: Curves.linear,
+        vsync: position.context.vsync,
+      ),
+    );
+    await tester.pumpAndSettle();
+    // The _NoOverscrollDrivenScrollActivity avoided overscroll.
+    expect(notifications, isEmpty);
+  });
+
   testWidgets('Ability to keep a PageView at the end manually (issue 62209)', (
     WidgetTester tester,
   ) async {
-    await tester.pumpWidget(const MaterialApp(home: PageView62209()));
+    await tester.pumpWidget(const TestWidgetsApp(home: PageView62209()));
     expect(find.text('Page 1'), findsOneWidget);
     expect(find.text('Page 100'), findsNothing);
     await tester.drag(find.byType(PageView62209), const Offset(-800.0, 0.0));
@@ -91,13 +157,13 @@ void main() {
     expect(find.text('Page 1'), findsNothing);
     expect(find.text('Page 5'), findsNothing);
     expect(find.text('Page 100'), findsOneWidget);
-    await tester.tap(find.byType(TextButton)); // 6
+    await tester.tap(find.byType(TestButton)); // 6
     await tester.pump();
     expect(find.text('Page 1'), findsNothing);
     expect(find.text('Page 6'), findsNothing);
     expect(find.text('Page 5'), findsNothing);
     expect(find.text('Page 100'), findsOneWidget);
-    await tester.tap(find.byType(TextButton)); // 7
+    await tester.tap(find.byType(TestButton)); // 7
     await tester.pump();
     expect(find.text('Page 1'), findsNothing);
     expect(find.text('Page 6'), findsNothing);
@@ -115,7 +181,7 @@ void main() {
     expect(find.text('Page 4'), findsOneWidget);
     expect(find.text('Page 5'), findsNothing);
     expect(find.text('Page 100'), findsNothing);
-    await tester.tap(find.byType(TextButton)); // 8
+    await tester.tap(find.byType(TestButton)); // 8
     await tester.pump();
     expect(find.text('Page 1'), findsNothing);
     expect(find.text('Page 8'), findsNothing);
@@ -140,7 +206,7 @@ void main() {
     await tester.drag(find.byType(PageView62209), const Offset(800.0, 0.0));
     await tester.pump();
     expect(find.text('Page 1'), findsOneWidget);
-    await tester.tap(find.byType(TextButton)); // 9
+    await tester.tap(find.byType(TestButton)); // 9
     await tester.pump();
     expect(find.text('Page 1'), findsOneWidget);
     expect(find.text('Page 9'), findsNothing);
@@ -150,12 +216,12 @@ void main() {
   });
 
   testWidgets('Pointer is not ignored during trackpad scrolling.', (WidgetTester tester) async {
-    final ScrollController controller = ScrollController();
+    final controller = ScrollController();
     addTearDown(controller.dispose);
     int? lastTapped;
     int? lastHovered;
     await tester.pumpWidget(
-      MaterialApp(
+      TestWidgetsApp(
         home: ListView(
           controller: controller,
           children: List<Widget>.generate(30, (int i) {
@@ -246,6 +312,33 @@ void main() {
     await tester.pumpAndSettle();
   });
 
+  testWidgets('DrivenScrollActivity.simulation constructor', (WidgetTester tester) async {
+    final controller = ScrollController();
+    addTearDown(controller.dispose);
+    await tester.pumpWidget(
+      Directionality(
+        textDirection: TextDirection.ltr,
+        child: ListView(controller: controller, children: children(10)),
+      ),
+    );
+    final position = controller.position as ScrollPositionWithSingleContext;
+
+    const g = 9.8;
+    position.beginActivity(
+      DrivenScrollActivity.simulation(
+        position,
+        vsync: position.context.vsync,
+        GravitySimulation(g, 0, 1000, 0),
+      ),
+    );
+    await tester.pump();
+    expect(position.pixels, 0.0);
+    await tester.pump(const Duration(seconds: 1));
+    expect(position.pixels, (1 / 2) * g);
+    await tester.pump(const Duration(seconds: 1));
+    expect(position.pixels, 2 * g);
+  });
+
   test('$ScrollActivity dispatches memory events', () async {
     await expectLater(
       await memoryEvents(
@@ -259,11 +352,10 @@ void main() {
   test('$ScrollDragController dispatches memory events', () async {
     await expectLater(
       await memoryEvents(
-        () =>
-            ScrollDragController(
-              delegate: _ScrollActivityDelegate(),
-              details: DragStartDetails(),
-            ).dispose(),
+        () => ScrollDragController(
+          delegate: _ScrollActivityDelegate(),
+          details: DragStartDetails(),
+        ).dispose(),
         ScrollDragController,
       ),
       areCreateAndDispose,
@@ -285,7 +377,7 @@ class _PageView62209State extends State<PageView62209> {
   @override
   void initState() {
     super.initState();
-    for (int i = 0; i < 5; i++) {
+    for (var i = 0; i < 5; i++) {
       _pages.add(Carousel62209Page(key: Key('$_nextPageNum'), number: _nextPageNum++));
     }
     _pages.add(const Carousel62209Page(number: 100));
@@ -293,23 +385,21 @@ class _PageView62209State extends State<PageView62209> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Column(
-        children: <Widget>[
-          Expanded(child: Carousel62209(pages: _pages)),
-          TextButton(
-            child: const Text('ADD PAGE'),
-            onPressed: () {
-              setState(() {
-                _pages.insert(
-                  1,
-                  Carousel62209Page(key: Key('$_nextPageNum'), number: _nextPageNum++),
-                );
-              });
-            },
-          ),
-        ],
-      ),
+    return Column(
+      children: <Widget>[
+        Expanded(child: Carousel62209(pages: _pages)),
+        TestButton(
+          child: const Text('ADD PAGE'),
+          onPressed: () {
+            setState(() {
+              _pages.insert(
+                1,
+                Carousel62209Page(key: Key('$_nextPageNum'), number: _nextPageNum++),
+              );
+            });
+          },
+        ),
+      ],
     );
   }
 }
@@ -354,8 +444,8 @@ class _Carousel62209State extends State<Carousel62209> {
   void didUpdateWidget(Carousel62209 oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (!_jumpingToPage) {
-      int newPage = -1;
-      for (int i = 0; i < widget.pages.length; i++) {
+      var newPage = -1;
+      for (var i = 0; i < widget.pages.length; i++) {
         if (widget.pages[i].number == _pages[_currentPage].number) {
           newPage = i;
         }
@@ -408,6 +498,35 @@ class _Carousel62209State extends State<Carousel62209> {
         },
       ),
     );
+  }
+}
+
+class _NoOverscrollDrivenScrollActivity extends DrivenScrollActivity {
+  _NoOverscrollDrivenScrollActivity(
+    ScrollPositionWithSingleContext super.delegate, {
+    required super.from,
+    required super.to,
+    required super.duration,
+    required super.curve,
+    required super.vsync,
+  });
+
+  ScrollPosition get _position => delegate as ScrollPosition;
+
+  @override
+  bool applyMoveTo(double value) {
+    var done = false;
+    if (velocity >= 0.0 && value > _position.maxScrollExtent) {
+      value = _position.maxScrollExtent;
+      done = true;
+    } else if (velocity <= 0.0 && value < _position.minScrollExtent) {
+      value = _position.minScrollExtent;
+      done = true;
+    }
+    if (!super.applyMoveTo(value)) {
+      return false;
+    }
+    return !done;
   }
 }
 

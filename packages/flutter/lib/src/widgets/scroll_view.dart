@@ -115,8 +115,14 @@ abstract class ScrollView extends StatelessWidget {
     this.shrinkWrap = false,
     this.center,
     this.anchor = 0.0,
+    @Deprecated(
+      'Use scrollCacheExtent instead. '
+      'This feature was deprecated after v3.41.0-0.0.pre.',
+    )
     this.cacheExtent,
+    this.scrollCacheExtent,
     this.semanticChildCount,
+    this.paintOrder = SliverPaintOrder.firstIsTop,
     this.dragStartBehavior = DragStartBehavior.start,
     this.keyboardDismissBehavior,
     this.restorationId,
@@ -353,7 +359,14 @@ abstract class ScrollView extends StatelessWidget {
   final double anchor;
 
   /// {@macro flutter.rendering.RenderViewportBase.cacheExtent}
+  @Deprecated(
+    'Use scrollCacheExtent instead. '
+    'This feature was deprecated after v3.41.0-0.0.pre.',
+  )
   final double? cacheExtent;
+
+  /// {@macro flutter.rendering.RenderViewportBase.scrollCacheExtent}
+  final ScrollCacheExtent? scrollCacheExtent;
 
   /// The number of children that will contribute semantic information.
   ///
@@ -369,6 +382,11 @@ abstract class ScrollView extends StatelessWidget {
   ///
   ///  * [SemanticsConfiguration.scrollChildCount], the corresponding semantics property.
   final int? semanticChildCount;
+
+  /// {@macro flutter.rendering.RenderViewportBase.paintOrder}
+  ///
+  /// Defaults to [SliverPaintOrder.firstIsTop].
+  final SliverPaintOrder paintOrder;
 
   /// {@macro flutter.widgets.scrollable.dragStartBehavior}
   final DragStartBehavior dragStartBehavior;
@@ -457,21 +475,26 @@ abstract class ScrollView extends StatelessWidget {
           return true;
       }
     }());
+    final ScrollCacheExtent? effectiveScrollCacheExtent =
+        scrollCacheExtent ?? (cacheExtent != null ? ScrollCacheExtent.pixels(cacheExtent!) : null);
     if (shrinkWrap) {
       return ShrinkWrappingViewport(
         axisDirection: axisDirection,
         offset: offset,
         slivers: slivers,
+        paintOrder: paintOrder,
         clipBehavior: clipBehavior,
+        scrollCacheExtent: effectiveScrollCacheExtent,
       );
     }
     return Viewport(
       axisDirection: axisDirection,
       offset: offset,
       slivers: slivers,
-      cacheExtent: cacheExtent,
+      scrollCacheExtent: effectiveScrollCacheExtent,
       center: center,
       anchor: anchor,
+      paintOrder: paintOrder,
       clipBehavior: clipBehavior,
     );
   }
@@ -485,10 +508,11 @@ abstract class ScrollView extends StatelessWidget {
         primary ??
         controller == null && PrimaryScrollController.shouldInherit(context, scrollDirection);
 
-    final ScrollController? scrollController =
-        effectivePrimary ? PrimaryScrollController.maybeOf(context) : controller;
+    final ScrollController? scrollController = effectivePrimary
+        ? PrimaryScrollController.maybeOf(context)
+        : controller;
 
-    final Scrollable scrollable = Scrollable(
+    final scrollable = Scrollable(
       dragStartBehavior: dragStartBehavior,
       axisDirection: axisDirection,
       controller: scrollController,
@@ -503,11 +527,10 @@ abstract class ScrollView extends StatelessWidget {
       clipBehavior: clipBehavior,
     );
 
-    final Widget scrollableResult =
-        effectivePrimary && scrollController != null
-            // Further descendant ScrollViews will not inherit the same PrimaryScrollController
-            ? PrimaryScrollController.none(child: scrollable)
-            : scrollable;
+    final Widget scrollableResult = effectivePrimary && scrollController != null
+        // Further descendant ScrollViews will not inherit the same PrimaryScrollController
+        ? PrimaryScrollController.none(child: scrollable)
+        : scrollable;
 
     final ScrollViewKeyboardDismissBehavior effectiveKeyboardDismissBehavior =
         keyboardDismissBehavior ??
@@ -553,6 +576,13 @@ abstract class ScrollView extends StatelessWidget {
     );
     properties.add(
       FlagProperty('shrinkWrap', value: shrinkWrap, ifTrue: 'shrink-wrapping', showName: true),
+    );
+    properties.add(
+      DiagnosticsProperty<ScrollCacheExtent>(
+        'scrollCacheExtent',
+        scrollCacheExtent,
+        defaultValue: null,
+      ),
     );
   }
 }
@@ -700,7 +730,13 @@ class CustomScrollView extends ScrollView {
     super.shrinkWrap,
     super.center,
     super.anchor,
+    @Deprecated(
+      'Use scrollCacheExtent instead. '
+      'This feature was deprecated after v3.41.0-0.0.pre.',
+    )
     super.cacheExtent,
+    super.scrollCacheExtent,
+    super.paintOrder,
     this.slivers = const <Widget>[],
     super.semanticChildCount,
     super.dragStartBehavior,
@@ -841,7 +877,12 @@ abstract class BoxScrollView extends ScrollView {
     super.physics,
     super.shrinkWrap,
     this.padding,
+    @Deprecated(
+      'Use scrollCacheExtent instead. '
+      'This feature was deprecated after v3.41.0-0.0.pre.',
+    )
     super.cacheExtent,
+    super.scrollCacheExtent,
     super.semanticChildCount,
     super.dragStartBehavior,
     super.keyboardDismissBehavior,
@@ -870,17 +911,15 @@ abstract class BoxScrollView extends ScrollView {
           right: 0.0,
         );
         // Consume the main axis padding with SliverPadding.
-        effectivePadding =
-            scrollDirection == Axis.vertical
-                ? mediaQueryVerticalPadding
-                : mediaQueryHorizontalPadding;
+        effectivePadding = scrollDirection == Axis.vertical
+            ? mediaQueryVerticalPadding
+            : mediaQueryHorizontalPadding;
         // Leave behind the cross axis padding.
         sliver = MediaQuery(
           data: mediaQuery.copyWith(
-            padding:
-                scrollDirection == Axis.vertical
-                    ? mediaQueryHorizontalPadding
-                    : mediaQueryVerticalPadding,
+            padding: scrollDirection == Axis.vertical
+                ? mediaQueryHorizontalPadding
+                : mediaQueryVerticalPadding,
           ),
           child: sliver,
         );
@@ -1283,7 +1322,12 @@ class ListView extends BoxScrollView {
     bool addAutomaticKeepAlives = true,
     bool addRepaintBoundaries = true,
     bool addSemanticIndexes = true,
+    @Deprecated(
+      'Use scrollCacheExtent instead. '
+      'This feature was deprecated after v3.41.0-0.0.pre.',
+    )
     super.cacheExtent,
+    super.scrollCacheExtent,
     List<Widget> children = const <Widget>[],
     int? semanticChildCount,
     super.dragStartBehavior,
@@ -1361,7 +1405,12 @@ class ListView extends BoxScrollView {
     bool addAutomaticKeepAlives = true,
     bool addRepaintBoundaries = true,
     bool addSemanticIndexes = true,
+    @Deprecated(
+      'Use scrollCacheExtent instead. '
+      'This feature was deprecated after v3.41.0-0.0.pre.',
+    )
     super.cacheExtent,
+    super.scrollCacheExtent,
     int? semanticChildCount,
     super.dragStartBehavior,
     super.keyboardDismissBehavior,
@@ -1412,6 +1461,20 @@ class ListView extends BoxScrollView {
   ///
   /// {@macro flutter.widgets.PageView.findChildIndexCallback}
   ///
+  /// {@template flutter.widgets.ListView.separated.findItemIndexCallback}
+  /// The [findItemIndexCallback] returns item indices (excluding separators),
+  /// unlike the deprecated [findChildIndexCallback] which returns child indices
+  /// (including both items and separators).
+  ///
+  /// For example, in a list with 3 items and 2 separators:
+  /// * Item indices: 0, 1, 2
+  /// * Child indices: 0 (item), 1 (separator), 2 (item), 3 (separator), 4 (item)
+  ///
+  /// This callback should be implemented if the order of items may change at a
+  /// later time. If null, reordering items may result in state-loss as widgets
+  /// may not map to their existing [RenderObject]s.
+  /// {@endtemplate}
+  ///
   /// {@tool snippet}
   ///
   /// This example shows how to create [ListView] whose [ListTile] list items
@@ -1447,19 +1510,38 @@ class ListView extends BoxScrollView {
     super.shrinkWrap,
     super.padding,
     required NullableIndexedWidgetBuilder itemBuilder,
+    @Deprecated(
+      'Use findItemIndexCallback instead. '
+      'findChildIndexCallback returns child indices (which include separators), '
+      'while findItemIndexCallback returns item indices (which do not). '
+      'If you were multiplying results by 2 to account for separators, '
+      'you can remove that workaround when migrating to findItemIndexCallback. '
+      'This feature was deprecated after v3.37.0-1.0.pre.',
+    )
     ChildIndexGetter? findChildIndexCallback,
+    ChildIndexGetter? findItemIndexCallback,
     required IndexedWidgetBuilder separatorBuilder,
     required int itemCount,
     bool addAutomaticKeepAlives = true,
     bool addRepaintBoundaries = true,
     bool addSemanticIndexes = true,
+    @Deprecated(
+      'Use scrollCacheExtent instead. '
+      'This feature was deprecated after v3.41.0-0.0.pre.',
+    )
     super.cacheExtent,
+    super.scrollCacheExtent,
     super.dragStartBehavior,
     super.keyboardDismissBehavior,
     super.restorationId,
     super.clipBehavior,
     super.hitTestBehavior,
   }) : assert(itemCount >= 0),
+       assert(
+         findItemIndexCallback == null || findChildIndexCallback == null,
+         'Cannot provide both findItemIndexCallback and findChildIndexCallback. '
+         'Use findItemIndexCallback as findChildIndexCallback is deprecated.',
+       ),
        itemExtent = null,
        itemExtentBuilder = null,
        prototypeItem = null,
@@ -1471,7 +1553,12 @@ class ListView extends BoxScrollView {
            }
            return separatorBuilder(context, itemIndex);
          },
-         findChildIndexCallback: findChildIndexCallback,
+         findChildIndexCallback: findItemIndexCallback != null
+             ? (Key key) {
+                 final int? itemIndex = findItemIndexCallback(key);
+                 return itemIndex == null ? null : itemIndex * 2;
+               }
+             : findChildIndexCallback,
          childCount: _computeActualChildCount(itemCount),
          addAutomaticKeepAlives: addAutomaticKeepAlives,
          addRepaintBoundaries: addRepaintBoundaries,
@@ -1506,7 +1593,12 @@ class ListView extends BoxScrollView {
     this.prototypeItem,
     this.itemExtentBuilder,
     required this.childrenDelegate,
+    @Deprecated(
+      'Use scrollCacheExtent instead. '
+      'This feature was deprecated after v3.41.0-0.0.pre.',
+    )
     super.cacheExtent,
+    super.scrollCacheExtent,
     super.semanticChildCount,
     super.dragStartBehavior,
     super.keyboardDismissBehavior,
@@ -1891,7 +1983,12 @@ class GridView extends BoxScrollView {
     bool addAutomaticKeepAlives = true,
     bool addRepaintBoundaries = true,
     bool addSemanticIndexes = true,
+    @Deprecated(
+      'Use scrollCacheExtent instead. '
+      'This feature was deprecated after v3.41.0-0.0.pre.',
+    )
     super.cacheExtent,
+    super.scrollCacheExtent,
     List<Widget> children = const <Widget>[],
     int? semanticChildCount,
     super.dragStartBehavior,
@@ -1947,7 +2044,12 @@ class GridView extends BoxScrollView {
     bool addAutomaticKeepAlives = true,
     bool addRepaintBoundaries = true,
     bool addSemanticIndexes = true,
+    @Deprecated(
+      'Use scrollCacheExtent instead. '
+      'This feature was deprecated after v3.41.0-0.0.pre.',
+    )
     super.cacheExtent,
+    super.scrollCacheExtent,
     int? semanticChildCount,
     super.dragStartBehavior,
     super.keyboardDismissBehavior,
@@ -1980,7 +2082,12 @@ class GridView extends BoxScrollView {
     super.padding,
     required this.gridDelegate,
     required this.childrenDelegate,
+    @Deprecated(
+      'Use scrollCacheExtent instead. '
+      'This feature was deprecated after v3.41.0-0.0.pre.',
+    )
     super.cacheExtent,
+    super.scrollCacheExtent,
     super.semanticChildCount,
     super.dragStartBehavior,
     super.keyboardDismissBehavior,
@@ -2016,10 +2123,16 @@ class GridView extends BoxScrollView {
     double mainAxisSpacing = 0.0,
     double crossAxisSpacing = 0.0,
     double childAspectRatio = 1.0,
+    double? mainAxisExtent,
     bool addAutomaticKeepAlives = true,
     bool addRepaintBoundaries = true,
     bool addSemanticIndexes = true,
+    @Deprecated(
+      'Use scrollCacheExtent instead. '
+      'This feature was deprecated after v3.41.0-0.0.pre.',
+    )
     super.cacheExtent,
+    super.scrollCacheExtent,
     List<Widget> children = const <Widget>[],
     int? semanticChildCount,
     super.dragStartBehavior,
@@ -2032,6 +2145,7 @@ class GridView extends BoxScrollView {
          mainAxisSpacing: mainAxisSpacing,
          crossAxisSpacing: crossAxisSpacing,
          childAspectRatio: childAspectRatio,
+         mainAxisExtent: mainAxisExtent,
        ),
        childrenDelegate = SliverChildListDelegate(
          children,
@@ -2068,10 +2182,16 @@ class GridView extends BoxScrollView {
     double mainAxisSpacing = 0.0,
     double crossAxisSpacing = 0.0,
     double childAspectRatio = 1.0,
+    double? mainAxisExtent,
     bool addAutomaticKeepAlives = true,
     bool addRepaintBoundaries = true,
     bool addSemanticIndexes = true,
+    @Deprecated(
+      'Use scrollCacheExtent instead. '
+      'This feature was deprecated after v3.41.0-0.0.pre.',
+    )
     super.cacheExtent,
+    super.scrollCacheExtent,
     List<Widget> children = const <Widget>[],
     int? semanticChildCount,
     super.dragStartBehavior,
@@ -2084,6 +2204,7 @@ class GridView extends BoxScrollView {
          mainAxisSpacing: mainAxisSpacing,
          crossAxisSpacing: crossAxisSpacing,
          childAspectRatio: childAspectRatio,
+         mainAxisExtent: mainAxisExtent,
        ),
        childrenDelegate = SliverChildListDelegate(
          children,

@@ -131,7 +131,7 @@ struct Settings {
   // Path to a library containing the application's compiled Dart code.
   // This is a vector so that the embedder can provide fallback paths in
   // case the primary path to the library can not be loaded.
-  std::vector<std::string> application_library_path;
+  std::vector<std::string> application_library_paths;
 
   // Path to a library containing compiled Dart code usable for launching
   // the VM service isolate.
@@ -158,8 +158,10 @@ struct Settings {
   bool purge_persistent_cache = false;
   bool endless_trace_buffer = false;
   bool enable_dart_profiling = false;
+  bool profile_startup = false;
   bool disable_dart_asserts = false;
   bool enable_serial_gc = false;
+  bool profile_microtasks = false;
 
   // Whether embedder only allows secure connections.
   bool may_insecurely_connect_to_all_domains = true;
@@ -220,7 +222,7 @@ struct Settings {
 #if FML_OS_ANDROID || FML_OS_IOS || FML_OS_IOS_SIMULATOR
   // On iOS devices, Impeller is the default with no opt-out and this field is
   // const.
-#if FML_OS_IOS || FML_OS_IOS_SIMULATOR
+#if FML_OS_IOS || FML_OS_IOS_SIMULATOR || SLIMPELLER
   static constexpr const
 #endif                              // FML_OS_IOS && !FML_OS_IOS_SIMULATOR
       bool enable_impeller = true;  // NOLINT(readability-identifier-naming)
@@ -238,6 +240,9 @@ struct Settings {
 
   // An experimental mode that antialiases lines.
   bool impeller_antialiased_lines = false;
+
+  // Whether to use SDFs for rendering in Impeller.
+  bool impeller_use_sdfs = false;
 
   // Log a warning during shell initialization if Impeller is not enabled.
   bool warn_on_impeller_opt_out = false;

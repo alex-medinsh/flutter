@@ -19,11 +19,16 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import android.annotation.TargetApi;
 import android.content.Context;
+import androidx.activity.BackEventCompat;
 import androidx.activity.OnBackPressedCallback;
+import androidx.activity.OnBackPressedDispatcher;
 import androidx.fragment.app.FragmentActivity;
+import androidx.test.core.app.ActivityScenario;
 import androidx.test.core.app.ApplicationProvider;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
+import io.flutter.Build;
 import io.flutter.embedding.engine.FlutterEngine;
 import io.flutter.embedding.engine.FlutterEngineCache;
 import io.flutter.embedding.engine.FlutterJNI;
@@ -33,10 +38,8 @@ import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.robolectric.Robolectric;
 import org.robolectric.annotation.Config;
 
-@Config(manifest = Config.NONE)
 @RunWith(AndroidJUnit4.class)
 public class FlutterFragmentTest {
   private final Context ctx = ApplicationProvider.getApplicationContext();
@@ -287,14 +290,10 @@ public class FlutterFragmentTest {
     assertEquals(fragment.getExclusiveAppComponent(), delegate);
   }
 
-  @SuppressWarnings("deprecation")
-  private FragmentActivity getMockFragmentActivity() {
-    // TODO(reidbaker): https://github.com/flutter/flutter/issues/133151
-    return Robolectric.setupActivity(FragmentActivity.class);
-  }
-
   @Test
-  public void itDelegatesOnBackPressedWithSetFrameworkHandlesBack() {
+  @Config(sdk = Build.API_LEVELS.API_33)
+  @TargetApi(Build.API_LEVELS.API_33)
+  public void itDelegatesOnBackPressedWithSetFrameworkHandlesBackForSdk33() {
     // We need to mock FlutterJNI to avoid triggering native code.
     FlutterJNI flutterJNI = mock(FlutterJNI.class);
     when(flutterJNI.isAttached()).thenReturn(true);
@@ -309,36 +308,105 @@ public class FlutterFragmentTest {
             // sends backs to the framework if setFrameworkHandlesBack is true.
             .shouldAutomaticallyHandleOnBackPressed(true)
             .build();
-    FragmentActivity activity = getMockFragmentActivity();
-    activity
-        .getSupportFragmentManager()
-        .beginTransaction()
-        .add(android.R.id.content, fragment)
-        .commitNow();
 
-    FlutterActivityAndFragmentDelegate mockDelegate =
-        mock(FlutterActivityAndFragmentDelegate.class);
-    isDelegateAttached = true;
-    when(mockDelegate.isAttached()).thenAnswer(invocation -> isDelegateAttached);
-    doAnswer(invocation -> isDelegateAttached = false).when(mockDelegate).onDetach();
-    TestDelegateFactory delegateFactory = new TestDelegateFactory(mockDelegate);
-    fragment.setDelegateFactory(delegateFactory);
+    try (ActivityScenario<FragmentActivity> scenario =
+        ActivityScenario.launch(FragmentActivity.class)) {
+      scenario.onActivity(
+          activity -> {
+            activity
+                .getSupportFragmentManager()
+                .beginTransaction()
+                .add(android.R.id.content, fragment)
+                .commitNow();
 
-    // Calling onBackPressed now will still be handled by Android (the default),
-    // until setFrameworkHandlesBack is set to true.
-    activity.getOnBackPressedDispatcher().onBackPressed();
-    verify(mockDelegate, times(0)).onBackPressed();
+            FlutterActivityAndFragmentDelegate mockDelegate =
+                mock(FlutterActivityAndFragmentDelegate.class);
+            isDelegateAttached = true;
+            when(mockDelegate.isAttached()).thenAnswer(invocation -> isDelegateAttached);
+            doAnswer(invocation -> isDelegateAttached = false).when(mockDelegate).onDetach();
+            TestDelegateFactory delegateFactory = new TestDelegateFactory(mockDelegate);
+            fragment.setDelegateFactory(delegateFactory);
 
-    // Setting setFrameworkHandlesBack to true means the delegate will receive
-    // the back and Android won't handle it.
-    fragment.setFrameworkHandlesBack(true);
-    activity.getOnBackPressedDispatcher().onBackPressed();
-    verify(mockDelegate, times(1)).onBackPressed();
+            // Calling onBackPressed now will still be handled by Android (the default),
+            // until setFrameworkHandlesBack is set to true.
+            activity.getOnBackPressedDispatcher().onBackPressed();
+            verify(mockDelegate, times(0)).onBackPressed();
+
+            // Setting setFrameworkHandlesBack to true means the delegate will receive
+            // the back and Android won't handle it.
+            fragment.setFrameworkHandlesBack(true);
+            activity.getOnBackPressedDispatcher().onBackPressed();
+            verify(mockDelegate, times(1)).onBackPressed();
+          });
+    }
   }
 
-  @SuppressWarnings("deprecation")
-  // Robolectric.setupActivity
-  // TODO(reidbaker): https://github.com/flutter/flutter/issues/133151
+  @Test
+  @Config(sdk = Build.API_LEVELS.API_34)
+  @TargetApi(Build.API_LEVELS.API_34)
+  public void itDelegatesOnBackPressedWithSetFrameworkHandlesBackForSdk34OrHigher() {
+    // We need to mock FlutterJNI to avoid triggering native code.
+    FlutterJNI flutterJNI = mock(FlutterJNI.class);
+    when(flutterJNI.isAttached()).thenReturn(true);
+
+    FlutterEngine flutterEngine =
+        new FlutterEngine(ctx, new FlutterLoader(), flutterJNI, null, false);
+    FlutterEngineCache.getInstance().put("my_cached_engine", flutterEngine);
+
+    FlutterFragment fragment =
+        FlutterFragment.withCachedEngine("my_cached_engine")
+            // This enables the use of onBackPressedCallback, which is what
+            // sends backs to the framework if setFrameworkHandlesBack is true.
+            .shouldAutomaticallyHandleOnBackPressed(true)
+            .build();
+
+    try (ActivityScenario<FragmentActivity> scenario =
+        ActivityScenario.launch(FragmentActivity.class)) {
+      scenario.onActivity(
+          activity -> {
+            activity
+                .getSupportFragmentManager()
+                .beginTransaction()
+                .add(android.R.id.content, fragment)
+                .commitNow();
+
+            FlutterActivityAndFragmentDelegate mockDelegate =
+                mock(FlutterActivityAndFragmentDelegate.class);
+            isDelegateAttached = true;
+            when(mockDelegate.isAttached()).thenAnswer(invocation -> isDelegateAttached);
+            doAnswer(invocation -> isDelegateAttached = false).when(mockDelegate).onDetach();
+            TestDelegateFactory delegateFactory = new TestDelegateFactory(mockDelegate);
+            fragment.setDelegateFactory(delegateFactory);
+
+            BackEventCompat mockBackEvent = mock(BackEventCompat.class);
+            OnBackPressedDispatcher dispatcher = activity.getOnBackPressedDispatcher();
+
+            // Back gesture events now will still be handled by Android (the default),
+            // until setFrameworkHandlesBack is set to true.
+            dispatcher.dispatchOnBackStarted(mockBackEvent);
+            dispatcher.dispatchOnBackProgressed(mockBackEvent);
+            dispatcher.onBackPressed();
+            dispatcher.dispatchOnBackCancelled();
+            verify(mockDelegate, times(0)).startBackGesture(any());
+            verify(mockDelegate, times(0)).updateBackGestureProgress(any());
+            verify(mockDelegate, times(0)).commitBackGesture();
+            verify(mockDelegate, times(0)).cancelBackGesture();
+
+            // Setting setFrameworkHandlesBack to true means the delegate will receive
+            // the back and Android won't handle it.
+            fragment.setFrameworkHandlesBack(true);
+            dispatcher.dispatchOnBackStarted(mockBackEvent);
+            dispatcher.dispatchOnBackProgressed(mockBackEvent);
+            dispatcher.onBackPressed();
+            dispatcher.dispatchOnBackCancelled();
+            verify(mockDelegate, times(1)).startBackGesture(any());
+            verify(mockDelegate, times(1)).updateBackGestureProgress(any());
+            verify(mockDelegate, times(1)).commitBackGesture();
+            verify(mockDelegate, times(1)).cancelBackGesture();
+          });
+    }
+  }
+
   @Test
   public void itHandlesPopSystemNavigationAutomaticallyWhenEnabled() {
     // We need to mock FlutterJNI to avoid triggering native code.
@@ -353,41 +421,47 @@ public class FlutterFragmentTest {
         FlutterFragment.withCachedEngine("my_cached_engine")
             .shouldAutomaticallyHandleOnBackPressed(true)
             .build();
-    FragmentActivity activity = getMockFragmentActivity();
-    activity
-        .getSupportFragmentManager()
-        .beginTransaction()
-        .add(android.R.id.content, fragment)
-        .commitNow();
-    final AtomicBoolean onBackPressedCalled = new AtomicBoolean(false);
-    OnBackPressedCallback callback =
-        new OnBackPressedCallback(true) {
-          @Override
-          public void handleOnBackPressed() {
-            onBackPressedCalled.set(true);
-          }
-        };
-    activity.getOnBackPressedDispatcher().addCallback(callback);
 
-    FlutterActivityAndFragmentDelegate mockDelegate =
-        mock(FlutterActivityAndFragmentDelegate.class);
-    TestDelegateFactory delegateFactory = new TestDelegateFactory(mockDelegate);
-    fragment.setDelegateFactory(delegateFactory);
+    try (ActivityScenario<FragmentActivity> scenario =
+        ActivityScenario.launch(FragmentActivity.class)) {
+      scenario.onActivity(
+          activity -> {
+            activity
+                .getSupportFragmentManager()
+                .beginTransaction()
+                .add(android.R.id.content, fragment)
+                .commitNow();
+            final AtomicBoolean onBackPressedCalled = new AtomicBoolean(false);
+            OnBackPressedCallback callback =
+                new OnBackPressedCallback(true) {
+                  @Override
+                  public void handleOnBackPressed() {
+                    onBackPressedCalled.set(true);
+                  }
+                };
+            activity.getOnBackPressedDispatcher().addCallback(callback);
 
-    assertTrue(callback.isEnabled());
+            FlutterActivityAndFragmentDelegate mockDelegate =
+                mock(FlutterActivityAndFragmentDelegate.class);
+            TestDelegateFactory delegateFactory = new TestDelegateFactory(mockDelegate);
+            fragment.setDelegateFactory(delegateFactory);
 
-    assertTrue(fragment.popSystemNavigator());
+            assertTrue(callback.isEnabled());
 
-    verify(mockDelegate, never()).onBackPressed();
-    assertTrue(onBackPressedCalled.get());
-    assertTrue(callback.isEnabled());
+            assertTrue(fragment.popSystemNavigator());
 
-    callback.setEnabled(false);
-    assertFalse(callback.isEnabled());
-    assertTrue(fragment.popSystemNavigator());
+            verify(mockDelegate, never()).onBackPressed();
+            assertTrue(onBackPressedCalled.get());
+            assertTrue(callback.isEnabled());
 
-    verify(mockDelegate, never()).onBackPressed();
-    assertFalse(callback.isEnabled());
+            callback.setEnabled(false);
+            assertFalse(callback.isEnabled());
+            assertTrue(fragment.popSystemNavigator());
+
+            verify(mockDelegate, never()).onBackPressed();
+            assertFalse(callback.isEnabled());
+          });
+    }
   }
 
   @Test

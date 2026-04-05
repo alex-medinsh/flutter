@@ -20,6 +20,7 @@
 #include "impeller/entity/entity.h"
 #include "impeller/entity/geometry/geometry.h"
 #include "impeller/geometry/color.h"
+#include "impeller/geometry/stroke_parameters.h"
 
 namespace impeller {
 
@@ -56,19 +57,20 @@ struct Paint {
     bool respect_ctm = true;
 
     std::shared_ptr<FilterContents> CreateMaskBlur(
-        std::shared_ptr<ColorSourceContents> color_source_contents,
-        const flutter::DlColorFilter* color_filter,
-        bool invert_colors,
-        RectGeometry* rect_geom) const;
-
-    std::shared_ptr<FilterContents> CreateMaskBlur(
         std::shared_ptr<TextureContents> texture_contents,
-        RectGeometry* rect_geom) const;
+        FillRectGeometry* rect_geom) const;
 
     std::shared_ptr<FilterContents> CreateMaskBlur(
         const FilterInput::Ref& input,
         bool is_solid_color,
         const Matrix& ctm) const;
+
+    std::shared_ptr<Contents> CreateMaskBlur(
+        const Paint& paint,
+        const Geometry* geometry,
+        std::shared_ptr<ColorSourceContents> contents,
+        bool needs_color_filter,
+        FillRectGeometry* out_geom) const;
   };
 
   Color color = Color::Black();
@@ -76,10 +78,7 @@ struct Paint {
   const flutter::DlColorFilter* color_filter = nullptr;
   const flutter::DlImageFilter* image_filter = nullptr;
 
-  Scalar stroke_width = 0.0;
-  Cap stroke_cap = Cap::kButt;
-  Join stroke_join = Join::kMiter;
-  Scalar stroke_miter = 4.0;
+  StrokeParameters stroke;
   Style style = Style::kFill;
   BlendMode blend_mode = BlendMode::kSrcOver;
   bool invert_colors = false;
@@ -108,7 +107,8 @@ struct Paint {
   /// @brief   Whether this paint has a color filter that can apply opacity
   bool HasColorFilter() const;
 
-  std::shared_ptr<ColorSourceContents> CreateContents() const;
+  std::shared_ptr<ColorSourceContents> CreateContents(
+      const Geometry* geometry) const;
 
   std::shared_ptr<Contents> WithMaskBlur(std::shared_ptr<Contents> input,
                                          bool is_solid_color,

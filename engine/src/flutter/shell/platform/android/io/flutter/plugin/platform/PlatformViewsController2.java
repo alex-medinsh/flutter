@@ -6,10 +6,10 @@ package io.flutter.plugin.platform;
 
 import static io.flutter.Build.API_LEVELS;
 
-import android.annotation.TargetApi;
 import android.content.Context;
 import android.graphics.PixelFormat;
 import android.util.SparseArray;
+import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.MotionEvent.PointerCoords;
 import android.view.MotionEvent.PointerProperties;
@@ -32,6 +32,8 @@ import io.flutter.embedding.engine.FlutterOverlaySurface;
 import io.flutter.embedding.engine.dart.DartExecutor;
 import io.flutter.embedding.engine.mutatorsstack.*;
 import io.flutter.embedding.engine.renderer.FlutterRenderer;
+import io.flutter.embedding.engine.systemchannels.PlatformViewCreationRequest;
+import io.flutter.embedding.engine.systemchannels.PlatformViewTouch;
 import io.flutter.embedding.engine.systemchannels.PlatformViewsChannel2;
 import io.flutter.plugin.editing.TextInputPlugin;
 import io.flutter.view.AccessibilityBridge;
@@ -43,6 +45,10 @@ import java.util.List;
  *
  * <p>Each {@link io.flutter.embedding.engine.FlutterEngine} has a single platform views controller.
  * A platform views controller can be attached to at most one Flutter view.
+ * [PlatformViewsController2] is intentionally a different class from [PlatformViewsController] in
+ * order to separate out the complexity of the first 3 platform view implementations (Virtual
+ * Display, Texture Layer, and Hybrid Composition). From the 4th platform view implementation,
+ * Hybrid Composition++.
  */
 public class PlatformViewsController2 implements PlatformViewsAccessibilityDelegate {
   private static final String TAG = "PlatformViewsController2";
@@ -90,8 +96,7 @@ public class PlatformViewsController2 implements PlatformViewsAccessibilityDeleg
     return false;
   }
 
-  public PlatformView createFlutterPlatformView(
-      @NonNull PlatformViewsChannel2.PlatformViewCreationRequest request) {
+  public PlatformView createFlutterPlatformView(@NonNull PlatformViewCreationRequest request) {
     final PlatformViewFactory viewFactory = registry.getFactory(request.viewType);
     if (viewFactory == null) {
       throw new IllegalStateException(
@@ -136,7 +141,7 @@ public class PlatformViewsController2 implements PlatformViewsAccessibilityDeleg
   }
 
   @VisibleForTesting
-  public MotionEvent toMotionEvent(float density, PlatformViewsChannel2.PlatformViewTouch touch) {
+  public MotionEvent toMotionEvent(float density, PlatformViewTouch touch) {
     MotionEventTracker.MotionEventId motionEventId =
         MotionEventTracker.MotionEventId.from(touch.motionEventId);
     MotionEvent trackedEvent = motionEventTracker.pop(motionEventId);
@@ -194,6 +199,8 @@ public class PlatformViewsController2 implements PlatformViewsAccessibilityDeleg
               + "attach was called while the PlatformViewsController was already attached.");
     }
     this.context = context;
+    // TODO(gmackall): We should remove this channel once hcpp has been enabled on existing
+    //  platform view widgets.
     platformViewsChannel = new PlatformViewsChannel2(dartExecutor);
     platformViewsChannel.setPlatformViewsHandler(channelHandler);
   }
@@ -306,11 +313,11 @@ public class PlatformViewsController2 implements PlatformViewsAccessibilityDeleg
    * PlatformViewsController} detaches from JNI.
    */
   public void onDetachedFromJNI() {
-    diposeAllViews();
+    disposeAllViews();
   }
 
   public void onPreEngineRestart() {
-    diposeAllViews();
+    disposeAllViews();
   }
 
   @Override
@@ -404,7 +411,7 @@ public class PlatformViewsController2 implements PlatformViewsAccessibilityDeleg
     return toLogicalPixels(physicalPixels, getDisplayDensity());
   }
 
-  private void diposeAllViews() {
+  private void disposeAllViews() {
     while (platformViews.size() > 0) {
       final int viewId = platformViews.keyAt(0);
       // Dispose deletes the entry from platformViews and clears associated resources.
@@ -512,7 +519,7 @@ public class PlatformViewsController2 implements PlatformViewsAccessibilityDeleg
     parentView.bringToFront();
 
     final FrameLayout.LayoutParams layoutParams =
-        new FrameLayout.LayoutParams(viewWidth, viewHeight);
+        new FrameLayout.LayoutParams(viewWidth, viewHeight, Gravity.LEFT | Gravity.TOP);
     final View view = platformViews.get(viewId).getView();
     if (view != null) {
       view.setLayoutParams(layoutParams);
@@ -520,7 +527,15 @@ public class PlatformViewsController2 implements PlatformViewsAccessibilityDeleg
     }
   }
 
-  @TargetApi(API_LEVELS.API_34)
+  public void hidePlatformView(int viewId) {
+    if (!initializePlatformViewIfNeeded(viewId)) {
+      return;
+    }
+
+    final FlutterMutatorView parentView = platformViewParent.get(viewId);
+    parentView.setVisibility(View.GONE);
+  }
+
   @RequiresApi(API_LEVELS.API_34)
   public void onEndFrame() {
     SurfaceControl.Transaction tx = new SurfaceControl.Transaction();
@@ -535,14 +550,11 @@ public class PlatformViewsController2 implements PlatformViewsAccessibilityDeleg
   // NOT called from UI thread.
   public synchronized void swapTransactions() {
     activeTransactions.clear();
-    for (int i = 0; i < pendingTransactions.size(); i++) {
-      activeTransactions.add(pendingTransactions.get(i));
-    }
+    activeTransactions.addAll(pendingTransactions);
     pendingTransactions.clear();
   }
 
   // NOT called from UI thread.
-  @TargetApi(API_LEVELS.API_34)
   @RequiresApi(API_LEVELS.API_34)
   public SurfaceControl.Transaction createTransaction() {
     SurfaceControl.Transaction tx = new SurfaceControl.Transaction();
@@ -551,7 +563,6 @@ public class PlatformViewsController2 implements PlatformViewsAccessibilityDeleg
   }
 
   // NOT called from UI thread.
-  @TargetApi(API_LEVELS.API_34)
   @RequiresApi(API_LEVELS.API_34)
   public void applyTransactions() {
     SurfaceControl.Transaction tx = new SurfaceControl.Transaction();
@@ -562,7 +573,6 @@ public class PlatformViewsController2 implements PlatformViewsAccessibilityDeleg
     pendingTransactions.clear();
   }
 
-  @TargetApi(API_LEVELS.API_34)
   @RequiresApi(API_LEVELS.API_34)
   public FlutterOverlaySurface createOverlaySurface() {
     if (overlayerSurface == null) {
@@ -592,36 +602,38 @@ public class PlatformViewsController2 implements PlatformViewsAccessibilityDeleg
     }
   }
 
-  @TargetApi(API_LEVELS.API_34)
   @RequiresApi(API_LEVELS.API_34)
   public void showOverlaySurface() {
     if (overlaySurfaceControl == null) {
       return;
     }
-    SurfaceControl.Transaction tx = new SurfaceControl.Transaction();
+    SurfaceControl.Transaction tx = createTransaction();
     tx.setVisibility(overlaySurfaceControl, /*visible=*/ true);
-    tx.apply();
   }
 
-  @TargetApi(API_LEVELS.API_34)
   @RequiresApi(API_LEVELS.API_34)
   public void hideOverlaySurface() {
     if (overlaySurfaceControl == null) {
       return;
     }
-    SurfaceControl.Transaction tx = new SurfaceControl.Transaction();
+    SurfaceControl.Transaction tx = createTransaction();
     tx.setVisibility(overlaySurfaceControl, /*visible=*/ false);
-    tx.apply();
+  }
+
+  public boolean isHcppEnabled() {
+    if (flutterJNI == null) {
+      return false;
+    }
+    return flutterJNI.IsSurfaceControlEnabled();
   }
 
   //// Message Handler ///////
 
-  private final PlatformViewsChannel2.PlatformViewsHandler channelHandler =
+  final PlatformViewsChannel2.PlatformViewsHandler channelHandler =
       new PlatformViewsChannel2.PlatformViewsHandler() {
 
         @Override
-        public void createPlatformView(
-            @NonNull PlatformViewsChannel2.PlatformViewCreationRequest request) {
+        public void createPlatformView(@NonNull PlatformViewCreationRequest request) {
           createFlutterPlatformView(request);
         }
 
@@ -664,7 +676,7 @@ public class PlatformViewsController2 implements PlatformViewsAccessibilityDeleg
         }
 
         @Override
-        public void onTouch(@NonNull PlatformViewsChannel2.PlatformViewTouch touch) {
+        public void onTouch(@NonNull PlatformViewTouch touch) {
           final int viewId = touch.viewId;
           final float density = context.getResources().getDisplayMetrics().density;
 
@@ -714,10 +726,7 @@ public class PlatformViewsController2 implements PlatformViewsAccessibilityDeleg
 
         @Override
         public boolean isSurfaceControlEnabled() {
-          if (flutterJNI == null) {
-            return false;
-          }
-          return flutterJNI.IsSurfaceControlEnabled();
+          return isHcppEnabled();
         }
       };
 }

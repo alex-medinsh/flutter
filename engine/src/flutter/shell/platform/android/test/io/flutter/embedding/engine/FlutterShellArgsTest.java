@@ -14,12 +14,12 @@ import java.util.Arrays;
 import java.util.HashSet;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.robolectric.annotation.Config;
 
-@Config(manifest = Config.NONE)
 @RunWith(AndroidJUnit4.class)
 public class FlutterShellArgsTest {
   @Test
+  // Annotation required because FlutterShellArgs was deprecated in favor of FlutterEngineFlags.
+  @SuppressWarnings("deprecation")
   public void itProcessesShellFlags() {
     // Setup the test.
     Intent intent = new Intent();

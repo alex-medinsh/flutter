@@ -13,6 +13,7 @@
 #include "flutter/assets/native_assets.h"
 #include "flutter/common/settings.h"
 #include "flutter/fml/trace_event.h"
+#include "flutter/impeller/core/runtime_types.h"
 #include "flutter/lib/ui/text/font_collection.h"
 #include "flutter/shell/common/animator.h"
 #include "rapidjson/document.h"
@@ -70,7 +71,8 @@ Engine::Engine(Delegate& delegate,
                const fml::RefPtr<SkiaUnrefQueue>& unref_queue,
                fml::TaskRunnerAffineWeakPtr<SnapshotDelegate> snapshot_delegate,
                const std::shared_ptr<fml::SyncSwitch>& gpu_disabled_switch,
-               impeller::RuntimeStageBackend runtime_stage_type)
+               const std::shared_future<impeller::RuntimeStageBackend>&
+                   runtime_stage_backend)
     : Engine(delegate,
              dispatcher_maker,
              vm.GetConcurrentWorkerTaskRunner(),
@@ -102,9 +104,9 @@ Engine::Engine(Delegate& delegate,
           settings_
               .skia_deterministic_rendering_on_cpu,  // deterministic rendering
           vm.GetConcurrentWorkerTaskRunner(),        // concurrent task runner
+          runtime_stage_backend,                     // runtime stage
           settings_.enable_impeller,                 // enable impeller
-          settings_.enable_flutter_gpu,              // enable impeller
-          runtime_stage_type,                        // runtime stage type
+          settings_.enable_flutter_gpu               // enable impeller
       });
 }
 
@@ -225,6 +227,8 @@ Engine::RunStatus Engine::Run(RunConfiguration configuration) {
   last_entry_point_args_ = configuration.GetEntrypointArgs();
 #endif
 
+  last_engine_id_ = configuration.GetEngineId();
+
   UpdateAssetManager(configuration.GetAssetManager());
 
   if (runtime_controller_->IsRootIsolateRunning()) {
@@ -299,11 +303,6 @@ void Engine::ReportTimings(std::vector<int64_t> timings) {
 
 void Engine::NotifyIdle(fml::TimeDelta deadline) {
   runtime_controller_->NotifyIdle(deadline);
-}
-
-void Engine::NotifyDestroyed() {
-  TRACE_EVENT0("flutter", "Engine::NotifyDestroyed");
-  runtime_controller_->NotifyDestroyed();
 }
 
 std::optional<uint32_t> Engine::GetUIIsolateReturnCode() {
@@ -405,7 +404,7 @@ bool Engine::HandleNavigationPlatformMessage(
   if (document.HasParseError() || !document.IsObject()) {
     return false;
   }
-  auto root = document.GetObject();
+  auto root = document.GetObj();
   auto method = root.FindMember("method");
   if (method->value != "setInitialRoute") {
     return false;
@@ -424,7 +423,7 @@ bool Engine::HandleLocalizationPlatformMessage(PlatformMessage* message) {
   if (document.HasParseError() || !document.IsObject()) {
     return false;
   }
-  auto root = document.GetObject();
+  auto root = document.GetObj();
   auto method = root.FindMember("method");
   if (method == root.MemberEnd()) {
     return false;
@@ -530,6 +529,14 @@ void Engine::UpdateSemantics(int64_t view_id,
                                     std::move(actions));
 }
 
+void Engine::SetApplicationLocale(std::string locale) {
+  delegate_.OnEngineSetApplicationLocale(std::move(locale));
+}
+
+void Engine::SetSemanticsTreeEnabled(bool enabled) {
+  delegate_.OnEngineSetSemanticsTreeEnabled(enabled);
+}
+
 void Engine::HandlePlatformMessage(std::unique_ptr<PlatformMessage> message) {
   if (message->channel() == kAssetChannel) {
     HandleAssetPlatformMessage(std::move(message));
@@ -614,6 +621,10 @@ const std::string& Engine::GetLastEntrypointLibrary() const {
 
 const std::vector<std::string>& Engine::GetLastEntrypointArgs() const {
   return last_entry_point_args_;
+}
+
+std::optional<int64_t> Engine::GetLastEngineId() const {
+  return last_engine_id_;
 }
 
 // |RuntimeDelegate|

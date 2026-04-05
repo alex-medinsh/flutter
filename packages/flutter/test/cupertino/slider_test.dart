@@ -5,9 +5,9 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/scheduler.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../widgets/semantics_tester.dart';
@@ -33,7 +33,7 @@ void main() {
 
   testWidgets('Slider does not move when tapped (LTR)', (WidgetTester tester) async {
     final Key sliderKey = UniqueKey();
-    double value = 0.0;
+    var value = 0.0;
 
     await tester.pumpWidget(
       CupertinoApp(
@@ -41,17 +41,15 @@ void main() {
           textDirection: TextDirection.ltr,
           child: StatefulBuilder(
             builder: (BuildContext context, StateSetter setState) {
-              return Material(
-                child: Center(
-                  child: CupertinoSlider(
-                    key: sliderKey,
-                    value: value,
-                    onChanged: (double newValue) {
-                      setState(() {
-                        value = newValue;
-                      });
-                    },
-                  ),
+              return Center(
+                child: CupertinoSlider(
+                  key: sliderKey,
+                  value: value,
+                  onChanged: (double newValue) {
+                    setState(() {
+                      value = newValue;
+                    });
+                  },
                 ),
               );
             },
@@ -71,7 +69,7 @@ void main() {
 
   testWidgets('Slider does not move when tapped (RTL)', (WidgetTester tester) async {
     final Key sliderKey = UniqueKey();
-    double value = 0.0;
+    var value = 0.0;
 
     await tester.pumpWidget(
       CupertinoApp(
@@ -79,17 +77,15 @@ void main() {
           textDirection: TextDirection.rtl,
           child: StatefulBuilder(
             builder: (BuildContext context, StateSetter setState) {
-              return Material(
-                child: Center(
-                  child: CupertinoSlider(
-                    key: sliderKey,
-                    value: value,
-                    onChanged: (double newValue) {
-                      setState(() {
-                        value = newValue;
-                      });
-                    },
-                  ),
+              return Center(
+                child: CupertinoSlider(
+                  key: sliderKey,
+                  value: value,
+                  onChanged: (double newValue) {
+                    setState(() {
+                      value = newValue;
+                    });
+                  },
                 ),
               );
             },
@@ -111,8 +107,8 @@ void main() {
     WidgetTester tester,
   ) async {
     final Key sliderKey = UniqueKey();
-    double value = 0.0;
-    int numberOfTimesOnChangeStartIsCalled = 0;
+    var value = 0.0;
+    var numberOfTimesOnChangeStartIsCalled = 0;
 
     await tester.pumpWidget(
       CupertinoApp(
@@ -120,20 +116,18 @@ void main() {
           textDirection: TextDirection.ltr,
           child: StatefulBuilder(
             builder: (BuildContext context, StateSetter setState) {
-              return Material(
-                child: Center(
-                  child: CupertinoSlider(
-                    key: sliderKey,
-                    value: value,
-                    onChanged: (double newValue) {
-                      setState(() {
-                        value = newValue;
-                      });
-                    },
-                    onChangeStart: (double value) {
-                      numberOfTimesOnChangeStartIsCalled++;
-                    },
-                  ),
+              return Center(
+                child: CupertinoSlider(
+                  key: sliderKey,
+                  value: value,
+                  onChanged: (double newValue) {
+                    setState(() {
+                      value = newValue;
+                    });
+                  },
+                  onChangeStart: (double value) {
+                    numberOfTimesOnChangeStartIsCalled++;
+                  },
                 ),
               );
             },
@@ -156,8 +150,8 @@ void main() {
     WidgetTester tester,
   ) async {
     final Key sliderKey = UniqueKey();
-    double value = 0.0;
-    int numberOfTimesOnChangeEndIsCalled = 0;
+    var value = 0.0;
+    var numberOfTimesOnChangeEndIsCalled = 0;
 
     await tester.pumpWidget(
       CupertinoApp(
@@ -165,20 +159,18 @@ void main() {
           textDirection: TextDirection.ltr,
           child: StatefulBuilder(
             builder: (BuildContext context, StateSetter setState) {
-              return Material(
-                child: Center(
-                  child: CupertinoSlider(
-                    key: sliderKey,
-                    value: value,
-                    onChanged: (double newValue) {
-                      setState(() {
-                        value = newValue;
-                      });
-                    },
-                    onChangeEnd: (double value) {
-                      numberOfTimesOnChangeEndIsCalled++;
-                    },
-                  ),
+              return Center(
+                child: CupertinoSlider(
+                  key: sliderKey,
+                  value: value,
+                  onChanged: (double newValue) {
+                    setState(() {
+                      value = newValue;
+                    });
+                  },
+                  onChangeEnd: (double value) {
+                    numberOfTimesOnChangeEndIsCalled++;
+                  },
                 ),
               );
             },
@@ -199,7 +191,7 @@ void main() {
 
   testWidgets('Slider moves when dragged (LTR)', (WidgetTester tester) async {
     final Key sliderKey = UniqueKey();
-    double value = 0.0;
+    var value = 0.0;
     late double startValue;
     late double endValue;
 
@@ -209,23 +201,21 @@ void main() {
           textDirection: TextDirection.ltr,
           child: StatefulBuilder(
             builder: (BuildContext context, StateSetter setState) {
-              return Material(
-                child: Center(
-                  child: CupertinoSlider(
-                    key: sliderKey,
-                    value: value,
-                    onChanged: (double newValue) {
-                      setState(() {
-                        value = newValue;
-                      });
-                    },
-                    onChangeStart: (double value) {
-                      startValue = value;
-                    },
-                    onChangeEnd: (double value) {
-                      endValue = value;
-                    },
-                  ),
+              return Center(
+                child: CupertinoSlider(
+                  key: sliderKey,
+                  value: value,
+                  onChanged: (double newValue) {
+                    setState(() {
+                      value = newValue;
+                    });
+                  },
+                  onChangeStart: (double value) {
+                    startValue = value;
+                  },
+                  onChangeEnd: (double value) {
+                    endValue = value;
+                  },
                 ),
               );
             },
@@ -253,9 +243,141 @@ void main() {
     expect(SchedulerBinding.instance.transientCallbackCount, equals(0));
   });
 
+  testWidgets(
+    'Slider emits haptic feedback when hitting edge',
+    (WidgetTester tester) async {
+      final hapticLog = <MethodCall>[];
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, (
+        MethodCall methodCall,
+      ) async {
+        hapticLog.add(methodCall);
+        return null;
+      });
+
+      final Key sliderKey = UniqueKey();
+      var value = 0.0;
+
+      await tester.pumpWidget(
+        Directionality(
+          textDirection: TextDirection.ltr,
+          child: StatefulBuilder(
+            builder: (BuildContext context, StateSetter setState) {
+              return Center(
+                child: CupertinoSlider(
+                  key: sliderKey,
+                  value: value,
+                  onChanged: (double newValue) {
+                    setState(() {
+                      value = newValue;
+                    });
+                  },
+                ),
+              );
+            },
+          ),
+        ),
+      );
+
+      // No haptic feedback should be emitted when the slider is created.
+      expect(hapticLog, hasLength(0));
+
+      const double unit = CupertinoThumbPainter.radius;
+      final Offset topLeft = tester.getTopLeft(find.byKey(sliderKey));
+      Offset thumbCenter = topLeft + const Offset(unit, unit);
+      const delta = Offset(50.0, 0.0);
+      await tester.dragFrom(thumbCenter, delta);
+      await tester.pump();
+
+      thumbCenter += delta;
+
+      // No haptic feedback should be emitted when the slider is moved.
+      expect(hapticLog, hasLength(0));
+
+      // Move the slider to the end quickly.
+      await tester.timedDragFrom(
+        thumbCenter,
+        const Offset(1000.0, 0.0),
+        const Duration(milliseconds: 100),
+      );
+
+      // Medium haptic feedback should be emitted when the slider is quickly moved to the end.
+      expect(hapticLog, hasLength(1));
+      expect(
+        hapticLog.last,
+        isMethodCall('HapticFeedback.vibrate', arguments: 'HapticFeedbackType.mediumImpact'),
+      );
+
+      // Move the slider to the start slowly.
+      thumbCenter = tester.getTopRight(find.byKey(sliderKey)) - const Offset(unit, -unit);
+      await tester.timedDragFrom(
+        thumbCenter,
+        -Offset(thumbCenter.dx - topLeft.dx - unit * 2, 0),
+        const Duration(milliseconds: 1100),
+      );
+
+      expect(value, equals(0.0));
+
+      // Selection click should be emitted when the slider is slowly moved to the start.
+      expect(hapticLog, hasLength(2));
+      expect(
+        hapticLog.last,
+        isMethodCall('HapticFeedback.vibrate', arguments: 'HapticFeedbackType.selectionClick'),
+      );
+    },
+    variant: TargetPlatformVariant.only(TargetPlatform.iOS),
+  );
+
+  testWidgets(
+    'Slider does not emit haptic feedback on non-iOS platforms',
+    (WidgetTester tester) async {
+      final hapticLog = <MethodCall>[];
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, (
+        MethodCall methodCall,
+      ) async {
+        hapticLog.add(methodCall);
+        return null;
+      });
+
+      final Key sliderKey = UniqueKey();
+      var value = 0.0;
+
+      await tester.pumpWidget(
+        Directionality(
+          textDirection: TextDirection.ltr,
+          child: StatefulBuilder(
+            builder: (BuildContext context, StateSetter setState) {
+              return Center(
+                child: CupertinoSlider(
+                  key: sliderKey,
+                  value: value,
+                  onChanged: (double newValue) {
+                    setState(() {
+                      value = newValue;
+                    });
+                  },
+                ),
+              );
+            },
+          ),
+        ),
+      );
+
+      const double unit = CupertinoThumbPainter.radius;
+      final Offset topLeft = tester.getTopLeft(find.byKey(sliderKey));
+      final Offset thumbCenter = topLeft + const Offset(unit, unit);
+
+      // Move the slider to the end.
+      await tester.dragFrom(thumbCenter, const Offset(1000.0, 0.0));
+
+      expect(value, equals(1.0));
+      expect(hapticLog, hasLength(0));
+    },
+    variant: TargetPlatformVariant.all(excluding: <TargetPlatform>{TargetPlatform.iOS}),
+  );
+
   testWidgets('Slider moves when dragged (RTL)', (WidgetTester tester) async {
     final Key sliderKey = UniqueKey();
-    double value = 0.0;
+    var value = 0.0;
     late double startValue;
     late double endValue;
 
@@ -265,27 +387,25 @@ void main() {
           textDirection: TextDirection.rtl,
           child: StatefulBuilder(
             builder: (BuildContext context, StateSetter setState) {
-              return Material(
-                child: Center(
-                  child: CupertinoSlider(
-                    key: sliderKey,
-                    value: value,
-                    onChanged: (double newValue) {
-                      setState(() {
-                        value = newValue;
-                      });
-                    },
-                    onChangeStart: (double value) {
-                      setState(() {
-                        startValue = value;
-                      });
-                    },
-                    onChangeEnd: (double value) {
-                      setState(() {
-                        endValue = value;
-                      });
-                    },
-                  ),
+              return Center(
+                child: CupertinoSlider(
+                  key: sliderKey,
+                  value: value,
+                  onChanged: (double newValue) {
+                    setState(() {
+                      value = newValue;
+                    });
+                  },
+                  onChangeStart: (double value) {
+                    setState(() {
+                      startValue = value;
+                    });
+                  },
+                  onChangeEnd: (double value) {
+                    setState(() {
+                      endValue = value;
+                    });
+                  },
                 ),
               );
             },
@@ -314,7 +434,7 @@ void main() {
   });
 
   testWidgets('Slider Semantics', (WidgetTester tester) async {
-    final SemanticsTester semantics = SemanticsTester(tester);
+    final semantics = SemanticsTester(tester);
 
     await tester.pumpWidget(
       MediaQuery(
@@ -376,7 +496,7 @@ void main() {
 
   testWidgets('Slider Semantics can be updated', (WidgetTester tester) async {
     final SemanticsHandle handle = tester.ensureSemantics();
-    double value = 0.5;
+    var value = 0.5;
     await tester.pumpWidget(
       CupertinoApp(
         home: Directionality(
@@ -427,7 +547,9 @@ void main() {
 
   testWidgets('Slider respects themes', (WidgetTester tester) async {
     await tester.pumpWidget(
-      CupertinoApp(home: Center(child: CupertinoSlider(onChanged: (double value) {}, value: 0.5))),
+      CupertinoApp(
+        home: Center(child: CupertinoSlider(onChanged: (double value) {}, value: 0.5)),
+      ),
     );
     expect(
       find.byType(CupertinoSlider),
@@ -468,7 +590,7 @@ void main() {
   });
 
   testWidgets('Themes can be overridden by dynamic colors', (WidgetTester tester) async {
-    const CupertinoDynamicColor activeColor = CupertinoDynamicColor(
+    const activeColor = CupertinoDynamicColor(
       color: Color(0x00000001),
       darkColor: Color(0x00000002),
       elevatedColor: Color(0x00000003),
@@ -645,7 +767,7 @@ void main() {
     WidgetTester tester,
   ) async {
     final Key sliderKey = UniqueKey();
-    double value = 0.0;
+    var value = 0.0;
 
     await tester.pumpWidget(
       CupertinoApp(
@@ -653,17 +775,15 @@ void main() {
           textDirection: TextDirection.ltr,
           child: StatefulBuilder(
             builder: (BuildContext context, StateSetter setState) {
-              return Material(
-                child: Center(
-                  child: CupertinoSlider(
-                    key: sliderKey,
-                    value: value,
-                    onChanged: (double newValue) {
-                      setState(() {
-                        value = newValue;
-                      });
-                    },
-                  ),
+              return Center(
+                child: CupertinoSlider(
+                  key: sliderKey,
+                  value: value,
+                  onChanged: (double newValue) {
+                    setState(() {
+                      value = newValue;
+                    });
+                  },
                 ),
               );
             },
@@ -691,5 +811,16 @@ void main() {
       RendererBinding.instance.mouseTracker.debugDeviceActiveCursor(1),
       kIsWeb ? SystemMouseCursors.click : SystemMouseCursors.basic,
     );
+  });
+
+  testWidgets('CupertinoSlider does not crash at zero area', (WidgetTester tester) async {
+    await tester.pumpWidget(
+      CupertinoApp(
+        home: Center(
+          child: SizedBox.shrink(child: CupertinoSlider(value: 0.0, onChanged: (_) {})),
+        ),
+      ),
+    );
+    expect(tester.getSize(find.byType(CupertinoSlider)), Size.zero);
   });
 }

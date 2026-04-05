@@ -45,7 +45,6 @@ import org.junit.runner.RunWith;
 import org.robolectric.Robolectric;
 import org.robolectric.annotation.Config;
 
-@Config(manifest = Config.NONE)
 @RunWith(AndroidJUnit4.class)
 public class FlutterFragmentActivityTest {
   private final Context ctx = ApplicationProvider.getApplicationContext();
@@ -258,6 +257,48 @@ public class FlutterFragmentActivityTest {
     // The framework would have recreated a new fragment but the fragment activity wouldn't have
     // created a new one again.
     assertEquals(0, activity.numberOfEnginesCreated);
+  }
+
+  @Test
+  public void configureFlutterEngine_doesNotRegisterPluginsWhenRecoveredInjectedFragmentIsFound() {
+    FlutterFragmentActivityWithProvidedEngine activity =
+        spy(Robolectric.buildActivity(FlutterFragmentActivityWithProvidedEngine.class).get());
+
+    FlutterFragment fragment = mock(FlutterFragment.class);
+    when(fragment.isFlutterEngineInjected()).thenReturn(true);
+    when(activity.retrieveExistingFlutterFragmentIfPossible()).thenReturn(fragment);
+
+    FlutterEngine engine = mock(FlutterEngine.class);
+    activity.configureFlutterEngine(engine);
+
+    assertTrue(GeneratedPluginRegistrant.getRegisteredEngines().isEmpty());
+  }
+
+  @Test
+  public void recreate_withCachedEngine_doesNotRegisterPlugins() {
+    FlutterLoader mockFlutterLoader = mock(FlutterLoader.class);
+    FlutterJNI mockFlutterJni = mock(FlutterJNI.class);
+    when(mockFlutterJni.isAttached()).thenReturn(true);
+    when(mockFlutterLoader.automaticallyRegisterPlugins()).thenReturn(false);
+
+    FlutterEngine cachedEngine =
+        new FlutterEngine(ctx, mockFlutterLoader, mockFlutterJni, new String[] {}, false);
+    final String cachedEngineId = "recreate_cached_engine";
+    FlutterEngineCache.getInstance().put(cachedEngineId, cachedEngine);
+    Intent intent = FlutterFragmentActivity.withCachedEngine(cachedEngineId).build(ctx);
+
+    try (ActivityScenario<FlutterFragmentActivity> scenario = ActivityScenario.launch(intent)) {
+      scenario.onActivity(
+          activity -> assertTrue(GeneratedPluginRegistrant.getRegisteredEngines().isEmpty()));
+
+      scenario.recreate();
+
+      scenario.onActivity(
+          activity -> assertTrue(GeneratedPluginRegistrant.getRegisteredEngines().isEmpty()));
+    } finally {
+      FlutterEngineCache.getInstance().remove(cachedEngineId);
+      cachedEngine.destroy();
+    }
   }
 
   @Test

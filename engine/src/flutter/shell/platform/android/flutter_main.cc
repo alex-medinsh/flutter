@@ -45,6 +45,23 @@ namespace {
 
 fml::jni::ScopedJavaGlobalRef<jclass>* g_flutter_jni_class = nullptr;
 
+// Workaround for crashes in Vivante GL driver on Android.
+//
+// See:
+//   * https://github.com/flutter/flutter/issues/167850
+//   * http://crbug.com/141785
+#ifdef FML_OS_ANDROID
+bool IsVivante() {
+  char product_model[PROP_VALUE_MAX];
+  __system_property_get("ro.hardware.egl", product_model);
+  return strcmp(product_model, "VIVANTE") == 0;
+}
+#else
+bool IsVivante() {
+  return false;
+}
+#endif  // FML_OS_ANDROID
+
 }  // anonymous namespace
 
 FlutterMain::FlutterMain(const flutter::Settings& settings,
@@ -85,7 +102,7 @@ void FlutterMain::Init(JNIEnv* env,
   }
   auto command_line = fml::CommandLineFromIterators(args.begin(), args.end());
 
-  auto settings = SettingsFromCommandLine(command_line);
+  auto settings = SettingsFromCommandLine(command_line, true);
 
   // Turn systracing on if ATrace_isEnabled is true and the user did not already
   // request systracing
@@ -106,6 +123,9 @@ void FlutterMain::Init(JNIEnv* env,
 
   AndroidRenderingAPI android_rendering_api =
       SelectedRenderingAPI(settings, api_level);
+
+  settings.warn_on_impeller_opt_out = true;
+#if !SLIMPELLER
   switch (android_rendering_api) {
     case AndroidRenderingAPI::kSoftware:
     case AndroidRenderingAPI::kSkiaOpenGLES:
@@ -117,6 +137,7 @@ void FlutterMain::Init(JNIEnv* env,
       settings.enable_impeller = true;
       break;
   }
+#endif  // !SLIMPELLER
 
 #if FLUTTER_RELEASE
   // On most platforms the timeline is always disabled in release mode.
@@ -247,6 +268,7 @@ bool FlutterMain::Register(JNIEnv* env) {
 AndroidRenderingAPI FlutterMain::SelectedRenderingAPI(
     const flutter::Settings& settings,
     int api_level) {
+#if !SLIMPELLER
   if (settings.enable_software_rendering) {
     if (settings.enable_impeller) {
       FML_CHECK(!settings.enable_impeller)
@@ -270,11 +292,14 @@ AndroidRenderingAPI FlutterMain::SelectedRenderingAPI(
 #endif
 
   if (settings.enable_impeller &&
-      api_level >= kMinimumAndroidApiLevelForImpeller) {
+      api_level >= kMinimumAndroidApiLevelForImpeller && !IsVivante()) {
     return AndroidRenderingAPI::kImpellerAutoselect;
   }
 
   return AndroidRenderingAPI::kSkiaOpenGLES;
+#else
+  return AndroidRenderingAPI::kImpellerAutoselect;
+#endif  // !SLIMPELLER
 }
 
 }  // namespace flutter

@@ -15,6 +15,7 @@
 #include "gtest/gtest.h"
 #include "impeller/core/runtime_types.h"
 #include "shell/platform/android/context/android_context.h"
+#include "third_party/skia/include/gpu/ganesh/mock/GrMockTypes.h"
 
 namespace flutter {
 namespace testing {
@@ -96,9 +97,12 @@ class TestAndroidContext : public AndroidContext {
  public:
   TestAndroidContext(const std::shared_ptr<impeller::Context>& impeller_context,
                      AndroidRenderingAPI rendering_api)
-      : AndroidContext(rendering_api) {
+      : AndroidContext(rendering_api), impeller_context_(impeller_context) {
     SetImpellerContext(impeller_context);
   }
+
+ private:
+  std::shared_ptr<impeller::Context> impeller_context_;
 };
 
 TEST(AndroidContextGl, Create) {
