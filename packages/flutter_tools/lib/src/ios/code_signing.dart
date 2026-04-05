@@ -20,6 +20,8 @@ import '../base/terminal.dart';
 import '../convert.dart' show utf8;
 import 'plist_parser.dart';
 
+typedef _CertificateTeamInfo = ({String teamId, String teamName});
+
 const _developmentTeamBuildSettingName = 'DEVELOPMENT_TEAM';
 const _codeSignStyleBuildSettingName = 'CODE_SIGN_STYLE';
 const _provisioningProfileSpecifierBuildSettingName = 'PROVISIONING_PROFILE_SPECIFIER';
@@ -142,7 +144,7 @@ final _certificateOrganizationalUnitExtractionPattern = RegExp(r'OU=([a-zA-Z0-9]
 ///
 /// `subject= /UID=A123BC4D5E/CN=Apple Development: Company Development (12ABCD234E)/OU=ABCDE1F2DH/O=Company LLC/C=US`
 /// extracts `Company LLC`
-final RegExp _certificateOrganizationExtractionPattern = RegExp(r'(?:^|[,/ ])O=([^,/\n]+)');
+final _certificateOrganizationExtractionPattern = RegExp(r'(?:^|[,/ ])O=([^,/\n]+)');
 
 /// Pattern to extract CN (Common Name) from certificate subject.
 ///
@@ -714,7 +716,7 @@ class XcodeCodeSigningSettings {
         .firstMatch(opensslOutput)
         ?.group(1);
 
-    return _CertificateTeamInfo(teamId: teamId, teamName: teamName?.trim() ?? '');
+    return (teamId: teamId, teamName: teamName ?? '');
   }
 
   /// Select code-signinging settings and save to config.
@@ -1061,17 +1063,6 @@ class ProvisioningProfile {
   final DateTime expirationDate;
   final List<File> developerCertificates;
   final bool? isXcodeManaged;
-}
-
-/// Holds team information parsed from a code-signing certificate subject.
-class _CertificateTeamInfo {
-  const _CertificateTeamInfo({required this.teamId, required this.teamName});
-
-  /// The Apple Developer Team ID, parsed from the certificate subject's OU field.
-  final String teamId;
-
-  /// The Apple Developer Team/Organization name, parsed from the certificate subject's O field.
-  final String teamName;
 }
 
 /// Returns true if s is a not empty string.
