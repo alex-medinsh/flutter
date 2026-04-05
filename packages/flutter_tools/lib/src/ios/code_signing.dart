@@ -852,8 +852,8 @@ class XcodeCodeSigningSettings {
     );
     final int count = validCodeSigningIdentities.length;
 
-    // Pre-fetch team info for all identities so we can display it alongside
-    // the identity name. Results are cached to avoid duplicate lookups later.
+    // Fetch team info for all identities so we can display it alongside
+    // the identity name.
     final teamInfoMap = <String, _CertificateTeamInfo?>{};
     for (final identity in validCodeSigningIdentities) {
       teamInfoMap[identity] = await _getCertificateTeamInfo(identity);
@@ -861,12 +861,8 @@ class XcodeCodeSigningSettings {
 
     for (var i = 0; i < count; i++) {
       final String identity = validCodeSigningIdentities[i];
-      final _CertificateTeamInfo? info = teamInfoMap[identity];
-      if (info != null && info.teamName.isNotEmpty) {
-        _logger.printStatus('[${i + 1}] $identity Team: ${info.teamName} (${info.teamId})');
-      } else {
-        _logger.printStatus('[${i + 1}] $identity');
-      }
+      final _CertificateTeamInfo info = teamInfoMap[identity]!;
+      _logger.printStatus('[${i + 1}] $identity | Team: ${info.teamId} ${info.teamName}');
     }
     final String choice = await _terminal.promptForCharInput(
       List<String>.generate(count, (int number) => '${number + 1}')..add('q'),
