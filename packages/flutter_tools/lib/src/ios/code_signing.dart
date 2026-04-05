@@ -136,17 +136,11 @@ final _certificateOrganizationalUnitExtractionPattern = RegExp(r'OU=([a-zA-Z0-9]
 /// Pattern to extract O (Organization) from certificate subject.
 ///
 /// Requires a separator character (comma, slash, or space) or start-of-string
-/// immediately before `O=` to avoid false positives on fields like `CO=` or
-/// multi-character field names.
+/// immediately before `O=` to avoid false positives on fields like `CO=`.
 ///
-/// Example (slash-separated):
+/// Example:
 ///
 /// `subject= /UID=A123BC4D5E/CN=Apple Development: Company Development (12ABCD234E)/OU=ABCDE1F2DH/O=Company LLC/C=US`
-/// extracts `Company LLC`
-///
-/// Example (comma-separated):
-///
-/// `subject=UID=A123BC4D5E, CN=Apple Development: Company Development (12ABCD234E), OU=ABCDE1F2DH, O=Company LLC, C=US`
 /// extracts `Company LLC`
 final RegExp _certificateOrganizationExtractionPattern = RegExp(r'(?:^|[,/ ])O=([^,/\n]+)');
 
@@ -651,7 +645,6 @@ class XcodeCodeSigningSettings {
   ///
   /// Returns null if the certificate cannot be found or parsed.
   Future<_CertificateTeamInfo?> _getCertificateTeamInfo(String identity) async {
-
     final String? signingCertificateId = _securityFindIdentityCertificateCnExtractionPattern
         .firstMatch(identity)
         ?.group(1);
@@ -714,21 +707,12 @@ class XcodeCodeSigningSettings {
         .firstMatch(opensslOutput)
         ?.group(1);
 
-    return _CertificateTeamInfo(
-      teamId: teamId,
-      teamName: teamName?.trim() ?? '',
-    );
+    return _CertificateTeamInfo(teamId: teamId, teamName: teamName?.trim() ?? '');
   }
 
   /// Find the certificate for the [identity] and extract the development team /
   /// organizational unit from the certificate.
-  Future<String?> getDevelopmentTeamFromIdentity(String identity) {
-    return _getDevelopmentTeamFromIdentity(identity);
-  }
-
-  /// Find the certificate for the [identity] and extract the development team /
-  /// organizational unit from the certificate.
-  Future<String?> _getDevelopmentTeamFromIdentity(String identity) async {
+  Future<String?> getDevelopmentTeamFromIdentity(String identity) async {
     final _CertificateTeamInfo? info = await _getCertificateTeamInfo(identity);
     return info?.teamId;
   }
@@ -868,22 +852,19 @@ class XcodeCodeSigningSettings {
 
     // Pre-fetch team info for all identities so we can display it alongside
     // the identity name. Results are cached to avoid duplicate lookups later.
-    final Map<String, _CertificateTeamInfo?> teamInfoMap = <String, _CertificateTeamInfo?>{};
-    for (final String identity in validCodeSigningIdentities) {
+    final teamInfoMap = <String, _CertificateTeamInfo?>{};
+    for (final identity in validCodeSigningIdentities) {
       teamInfoMap[identity] = await _getCertificateTeamInfo(identity);
     }
 
-    for (int i = 0; i < count; i++) {
+    for (var i = 0; i < count; i++) {
       final String identity = validCodeSigningIdentities[i];
       final _CertificateTeamInfo? info = teamInfoMap[identity];
       if (info != null && info.teamName.isNotEmpty) {
-        _logger.printStatus('[${i + 1}] $identity | Team: ${info.teamName} (${info.teamId})');
-      } else if (info != null) {
-        _logger.printStatus('[${i + 1}] $identity | Team: (${info.teamId})');
+        _logger.printStatus('[${i + 1}] $identity Team: ${info.teamName} (${info.teamId})');
       } else {
         _logger.printStatus('[${i + 1}] $identity');
       }
-
     }
     final String choice = await _terminal.promptForCharInput(
       List<String>.generate(count, (int number) => '${number + 1}')..add('q'),
