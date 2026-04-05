@@ -722,6 +722,12 @@ class XcodeCodeSigningSettings {
 
   /// Find the certificate for the [identity] and extract the development team /
   /// organizational unit from the certificate.
+  Future<String?> getDevelopmentTeamFromIdentity(String identity) {
+    return _getDevelopmentTeamFromIdentity(identity);
+  }
+
+  /// Find the certificate for the [identity] and extract the development team /
+  /// organizational unit from the certificate.
   Future<String?> _getDevelopmentTeamFromIdentity(String identity) async {
     final _CertificateTeamInfo? info = await _getCertificateTeamInfo(identity);
     return info?.teamId;
