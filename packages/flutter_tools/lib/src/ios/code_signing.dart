@@ -640,6 +640,13 @@ class XcodeCodeSigningSettings {
     return null;
   }
 
+  /// Find the certificate for the [identity] and extract the development team /
+  /// organizational unit from the certificate.
+  Future<String?> getDevelopmentTeamFromIdentity(String identity) async {
+    final _CertificateTeamInfo? info = await _getCertificateTeamInfo(identity);
+    return info?.teamId;
+  }
+
   /// Looks up [_CertificateTeamInfo] (team ID and team name) for the given
   /// [identity] by running `security find-certificate` and `openssl x509 -subject`.
   ///
@@ -708,13 +715,6 @@ class XcodeCodeSigningSettings {
         ?.group(1);
 
     return _CertificateTeamInfo(teamId: teamId, teamName: teamName?.trim() ?? '');
-  }
-
-  /// Find the certificate for the [identity] and extract the development team /
-  /// organizational unit from the certificate.
-  Future<String?> getDevelopmentTeamFromIdentity(String identity) async {
-    final _CertificateTeamInfo? info = await _getCertificateTeamInfo(identity);
-    return info?.teamId;
   }
 
   /// Select code-signinging settings and save to config.
